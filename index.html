@@ -16,6 +16,7 @@
 
   <h1 class="text-3xl text-center font-bold mb-4">Ujian Mid Semester - Kelas 7</h1>
 
+  <!-- Pilih Siswa -->
   <div id="loginDiv" class="bg-white p-4 rounded shadow max-w-md mx-auto">
     <h2 class="text-xl font-semibold mb-3">Pilih Nama Siswa</h2>
     <select id="siswaSelect" class="form-select mb-3">
@@ -27,6 +28,7 @@
 
   <div id="timer" class="text-center text-lg font-semibold text-red-600 my-4 hidden">Loading timer...</div>
 
+  <!-- Quiz Section -->
   <div class="row hidden" id="quizSection">
     <div class="col-md-9">
       <div id="quizContainer" class="bg-white p-4 rounded shadow">
@@ -60,12 +62,12 @@
 // ================== KONFIG ==================
 const siswaUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=1939472161";
 const csvUrl   = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
-const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbxZaJPgqNbL-w-0mLVUgy_o7udlKu4jNwZA2lFuUblWdXjtP0opCGvEE52pcwVeqFEQ/exec"; // <— GANTI dengan URL Web App
+const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbwscFCbMKHmSvh3yw0i1FfcvlDlhkP0P0udSP_OvfOGPfg36fhrgzjKg2YjCpIucmjq/exec"; // Ganti URL Web App Anda
 
 let siswaData = [];
 let questions = [];
 let currentIndex = 0;
-let timeLeft = 90 * 60;
+let timeLeft = 90*60;
 let isSubmitted = false;
 let currentSiswa = {};
 let timerHandle = null;
@@ -87,300 +89,180 @@ const progressDiv = document.getElementById("progress");
 
 // ===== Ambil data siswa =====
 fetch(siswaUrl)
-  .then(res => {
-    if (!res.ok) throw new Error(`Gagal ambil data siswa: ${res.status} ${res.statusText}`);
-    return res.text();
-  })
-  .then(text => {
-    const rows = parseCSV(text);
-    // Asumsikan header: nama,kelas,jk,nisn,tempat,tgl
-    siswaData = rows.map(r => ({
-      nama: r[0] || "",
-      kelas: r[1] || "",
-      jk: r[2] || "",
-      nisn: r[3] || "",
-      tempat: r[4] || "",
-      tgl: r[5] || ""
-    })).filter(s => s.nama);
-
-    siswaData.forEach((obj, i) => {
-      const option = document.createElement("option");
-      option.value = i;
-      option.textContent = obj.nama;
-      siswaSelect.appendChild(option);
-    });
-  })
-  .catch(err => {
-    alert("Tidak bisa memuat daftar siswa. Detail: " + err.message);
-    console.error(err);
+.then(res=>res.text())
+.then(text=>{
+  const rows = parseCSV(text);
+  siswaData = rows.map(r=>({
+    nama:r[0],kelas:r[1],jk:r[2],nisn:r[3],tempat:r[4],tgl:r[5]
+  })).filter(s=>s.nama);
+  siswaData.forEach((s,i)=>{
+    const option=document.createElement("option");
+    option.value=i; option.textContent=s.nama;
+    siswaSelect.appendChild(option);
   });
+});
 
-siswaSelect.addEventListener("change", () => {
+// Pilih siswa
+siswaSelect.addEventListener("change",()=>{
   const idx = siswaSelect.value;
-  if (idx === "") {
-    biodataDiv.innerHTML = "";
-    startBtn.disabled = true;
-  } else {
+  if(idx===""){ biodataDiv.innerHTML=""; startBtn.disabled=true; }
+  else{
     currentSiswa = siswaData[idx];
-    biodataDiv.innerHTML = `
-      Kelas: ${currentSiswa.kelas}<br>
-      JK: ${currentSiswa.jk}<br>
-      NISN: ${currentSiswa.nisn}<br>
-      Tempat Lahir: ${currentSiswa.tempat}<br>
-      Tanggal Lahir: ${currentSiswa.tgl}
-    `;
-    startBtn.disabled = false;
+    biodataDiv.innerHTML=`Kelas: ${currentSiswa.kelas}<br>JK: ${currentSiswa.jk}<br>NISN: ${currentSiswa.nisn}<br>Tempat Lahir: ${currentSiswa.tempat}<br>Tanggal Lahir: ${currentSiswa.tgl}`;
+    startBtn.disabled=false;
   }
 });
 
-startBtn.addEventListener("click", () => {
-  if (!currentSiswa.nama) {
-    alert("Silakan pilih siswa terlebih dahulu.");
-    return;
-  }
+// Mulai ujian
+startBtn.addEventListener("click",()=>{
+  if(!currentSiswa.nama){ alert("Pilih siswa!"); return; }
   loginDiv.classList.add("hidden");
   quizSection.classList.remove("hidden");
   timerDiv.classList.remove("hidden");
 
   fetch(csvUrl)
-    .then(res => {
-      if (!res.ok) throw new Error(`Gagal ambil data soal: ${res.status} ${res.statusText}`);
-      return res.text();
-    })
-    .then(text => {
-      const rows = parseCSV(text);
-      // Baris pertama = header. Harapkan header: No,Soal,Gambar,A,B,C,D,Jawaban
-      const header = rows.shift().map(h => String(h).trim());
-      const idxNo = header.indexOf("No");
-      const idxSoal = header.indexOf("Soal");
-      const idxGambar = header.indexOf("Gambar");
-      const idxA = header.indexOf("A");
-      const idxB = header.indexOf("B");
-      const idxC = header.indexOf("C");
-      const idxD = header.indexOf("D");
-      const idxJawaban = header.indexOf("Jawaban");
+  .then(res=>res.text())
+  .then(text=>{
+    const rows = parseCSV(text);
+    const header = rows.shift().map(h=>String(h).trim());
+    const idxNo = header.indexOf("No");
+    const idxSoal = header.indexOf("Soal");
+    const idxGambar = header.indexOf("Gambar");
+    const idxA = header.indexOf("A");
+    const idxB = header.indexOf("B");
+    const idxC = header.indexOf("C");
+    const idxD = header.indexOf("D");
+    const idxJawaban = header.indexOf("Jawaban");
 
-      questions = rows.map(r => ({
-        No: r[idxNo] || "",
-        Soal: r[idxSoal] || "",
-        Gambar: r[idxGambar] || "",
-        A: r[idxA] || "",
-        B: r[idxB] || "",
-        C: r[idxC] || "",
-        D: r[idxD] || "",
-        Jawaban: (r[idxJawaban] || "").toString().trim().toUpperCase(),
-        userAnswer: null
-      })).filter(q => q.No && q.Soal);
+    questions = rows.map(r=>({
+      No: r[idxNo], Soal: r[idxSoal], Gambar: r[idxGambar],
+      A:r[idxA], B:r[idxB], C:r[idxC], D:r[idxD],
+      Jawaban:(r[idxJawaban]||"").toString().trim().toUpperCase(),
+      userAnswer:null
+    })).filter(q=>q.No && q.Soal);
 
-      if (questions.length === 0) {
-        alert("Soal ujian tidak ditemukan. Periksa spreadsheet Anda.");
-        return;
-      }
-      buildNav();
-      renderQuestion(0);
-      startTimer();
-    })
-    .catch(err => {
-      alert("Tidak bisa memuat soal. Detail: " + err.message);
-      console.error(err);
-    });
+    buildNav(); renderQuestion(0); startTimer();
+  });
 });
 
-// ===== Parser CSV sederhana (dukung tanda kutip & koma dalam field) =====
-function parseCSV(text) {
-  const clean = text.startsWith('\uFEFF') ? text.slice(1) : text;
-  const rows = [];
-  let row = [];
-  let cur = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < clean.length; i++) {
-    const c = clean[i];
-    if (inQuotes) {
-      if (c === '"') {
-        const next = clean[i + 1];
-        if (next === '"') { // escaped quote
-          cur += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        cur += c;
-      }
-    } else {
-      if (c === '"') {
-        inQuotes = true;
-      } else if (c === ',') {
-        row.push(cur);
-        cur = '';
-      } else if (c === '\n' || c === '\r') {
-        if (c === '\r' && clean[i + 1] === '\n') i++; // handle CRLF
-        row.push(cur);
-        rows.push(row);
-        row = [];
-        cur = '';
-      } else {
-        cur += c;
-      }
+// ===== Parser CSV =====
+function parseCSV(text){ 
+  const clean = text.startsWith('\uFEFF')?text.slice(1):text; 
+  const rows=[]; let row=[], cur='', inQuotes=false; 
+  for(let i=0;i<clean.length;i++){
+    const c=clean[i];
+    if(inQuotes){
+      if(c==='"'){ const next=clean[i+1]; if(next==='"'){cur+='"';i++;} else{inQuotes=false;} }
+      else cur+=c;
+    } else{
+      if(c==='"') inQuotes=true;
+      else if(c==','){ row.push(cur); cur=''; }
+      else if(c==='\n'||c==='\r'){ if(c==='\r'&&clean[i+1]==='\n')i++; row.push(cur); rows.push(row); row=[]; cur=''; }
+      else cur+=c;
     }
   }
-  // tail
-  if (cur.length > 0 || inQuotes || row.length) {
-    row.push(cur);
-    rows.push(row);
-  }
-  return rows.filter(r => r.length && r.join('').trim().length);
+  if(cur.length>0||inQuotes||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.length && r.join('').trim().length);
 }
 
-// ===== UI & Navigasi =====
-function renderQuestion(index) {
-  const q = questions[index];
-  quizForm.innerHTML = `
-    <div class="text-lg font-semibold mb-2">${q.No}. ${q.Soal}</div>
-    ${q.Gambar ? `<img src="${q.Gambar}" class="mb-3 max-w-full h-auto rounded border">` : ""}
-    ${["A","B","C","D"].map(opt => `
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="q${index}" id="q${index}_${opt}" value="${opt}">
-        <label class="form-check-label" for="q${index}_${opt}">${opt}. ${q[opt]}</label>
-      </div>
-    `).join("")}
-  `;
-  if (q.userAnswer) {
-    const sel = document.querySelector(`input[name="q${index}"][value="${q.userAnswer}"]`);
-    if (sel) sel.checked = true;
-  }
-  prevBtn.disabled = index === 0;
-  nextBtn.style.display = index === questions.length - 1 ? "none" : "inline-block";
-  submitBtn.style.display = index === questions.length - 1 ? "inline-block" : "none";
+// ===== Navigasi =====
+function renderQuestion(index){
+  const q=questions[index];
+  quizForm.innerHTML=`<div class="text-lg font-semibold mb-2">${q.No}. ${q.Soal}</div>
+  ${q.Gambar?`<img src="${q.Gambar}" class="mb-3 max-w-full h-auto rounded border">`:""}
+  ${["A","B","C","D"].map(opt=>`<div class="form-check">
+  <input class="form-check-input" type="radio" name="q${index}" id="q${index}_${opt}" value="${opt}">
+  <label class="form-check-label" for="q${index}_${opt}">${opt}. ${q[opt]}</label></div>`).join("")}`;
+  if(q.userAnswer){ const sel=document.querySelector(`input[name="q${index}"][value="${q.userAnswer}"]`); if(sel) sel.checked=true; }
+  prevBtn.disabled = index===0;
+  nextBtn.style.display=index===questions.length-1?"none":"inline-block";
+  submitBtn.style.display=index===questions.length-1?"inline-block":"none";
   updateNav();
 }
 
-function saveAnswer(index) {
-  const selected = document.querySelector(`input[name="q${index}"]:checked`);
-  questions[index].userAnswer = selected ? selected.value : null;
+function saveAnswer(index){
+  const sel=document.querySelector(`input[name="q${index}"]:checked`);
+  questions[index].userAnswer = sel?sel.value:null;
   updateNav();
 }
 
-function buildNav() {
-  questionNav.innerHTML = "";
-  questions.forEach((q, i) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = q.No;
-    btn.className = "w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 bg-gray-400";
-    btn.onclick = () => { saveAnswer(currentIndex); currentIndex = i; renderQuestion(i); };
+function buildNav(){
+  questionNav.innerHTML="";
+  questions.forEach((q,i)=>{
+    const btn=document.createElement("button");
+    btn.type="button"; btn.textContent=q.No;
+    btn.className="w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 bg-gray-400";
+    btn.onclick=()=>{ saveAnswer(currentIndex); currentIndex=i; renderQuestion(i); };
     questionNav.appendChild(btn);
   });
   updateProgress();
 }
 
-function updateNav() {
-  [...questionNav.children].forEach((btn, i) => {
-    btn.className = "w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 " +
-      (i === currentIndex ? "bg-blue-600" : (questions[i].userAnswer ? "bg-green-500" : "bg-gray-400"));
+function updateNav(){
+  [...questionNav.children].forEach((btn,i)=>{
+    btn.className="w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 "+
+      (i===currentIndex?"bg-blue-600":(questions[i].userAnswer?"bg-green-500":"bg-gray-400"));
   });
   updateProgress();
 }
 
-function updateProgress() {
-  const answered = questions.filter(q => q.userAnswer).length;
-  progressDiv.textContent = `Terjawab: ${answered} / ${questions.length}`;
+function updateProgress(){
+  const answered = questions.filter(q=>q.userAnswer).length;
+  progressDiv.textContent=`Terjawab: ${answered} / ${questions.length}`;
 }
 
 // ===== Timer =====
-function renderTimer() {
-  const m = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-  const s = String(timeLeft % 60).padStart(2, "0");
-  timerDiv.textContent = `Waktu Tersisa: ${m}:${s}`;
+function renderTimer(){ const m=String(Math.floor(timeLeft/60)).padStart(2,"0"); const s=String(timeLeft%60).padStart(2,"0"); timerDiv.textContent=`Waktu Tersisa: ${m}:${s}`;}
+function startTimer(){ renderTimer(); timerHandle=setInterval(()=>{
+  if(isSubmitted){ clearInterval(timerHandle); return; }
+  if(timeLeft<=0){ clearInterval(timerHandle); if(!isSubmitted) checkAnswers(); return; }
+  timeLeft--; renderTimer();
+},1000);}
+
+// ===== Submit =====
+function disableAll(){
+  prevBtn.disabled=true; nextBtn.disabled=true; submitBtn.disabled=true;
+  [...document.querySelectorAll("input[type=radio]")].forEach(el=>el.disabled=true);
 }
 
-function startTimer() {
-  renderTimer();
-  timerHandle = setInterval(() => {
-    if (isSubmitted) { clearInterval(timerHandle); return; }
-    if (timeLeft <= 0) {
-      clearInterval(timerHandle);
-      if (!isSubmitted) checkAnswers();
-      return;
-    }
-    timeLeft--;
-    renderTimer();
-  }, 1000);
-}
-
-// ===== Submit & Simpan =====
-function disableAll() {
-  prevBtn.disabled = true;
-  nextBtn.disabled = true;
-  submitBtn.disabled = true;
-  [...document.querySelectorAll("input[type=radio]")].forEach(el => el.disabled = true);
-}
-
-function checkAnswers() {
-  if (isSubmitted) return;
-  isSubmitted = true;
-  saveAnswer(currentIndex);
-  if (timerHandle) clearInterval(timerHandle);
-
-  let score = 0;
-  const jawabanUser = [];
-  questions.forEach(q => {
-    const j = q.userAnswer || "Tidak dijawab";
+function checkAnswers(){
+  if(isSubmitted) return;
+  isSubmitted=true; saveAnswer(currentIndex); if(timerHandle) clearInterval(timerHandle);
+  let score=0; const jawabanUser=[];
+  questions.forEach(q=>{
+    const j=q.userAnswer||"Tidak dijawab";
     jawabanUser.push(`${q.No}: ${j}`);
-    if (q.userAnswer && q.userAnswer.toUpperCase() === q.Jawaban) score++;
+    if(q.userAnswer && q.userAnswer.toUpperCase()===q.Jawaban) score++;
   });
-
-  resultDiv.innerHTML = `Skor Anda: ${score} dari ${questions.length}`;
-  resultDiv.classList.remove("hidden");
-  disableAll();
+  resultDiv.innerHTML=`Skor Anda: ${score} dari ${questions.length}`; resultDiv.classList.remove("hidden"); disableAll();
 
   const resultData = {
-    nama: currentSiswa.nama,
-    kelas: currentSiswa.kelas,
-    jk: currentSiswa.jk,
-    nisn: currentSiswa.nisn,
-    tempat: currentSiswa.tempat,
-    tgl: currentSiswa.tgl,
-    jawaban: jawabanUser.join("; "),
-    skor: score,
-    waktu: (90 * 60) - timeLeft
+    nama: currentSiswa.nama, kelas: currentSiswa.kelas, jk: currentSiswa.jk, nisn: currentSiswa.nisn,
+    tempat: currentSiswa.tempat, tgl: currentSiswa.tgl,
+    jawaban: jawabanUser.join("; "), skor: score, waktu: (90*60)-timeLeft
   };
 
-  fetch(googleAppsScriptUrl, {
-    method: "POST",
-    body: JSON.stringify(resultData),
-    headers: { "Content-Type": "application/json" },
-    mode: "cors"
+  fetch(googleAppsScriptUrl,{
+    method:"POST",
+    body:JSON.stringify(resultData),
+    headers:{"Content-Type":"application/json"},
+    mode:"cors"
   })
-  .then(res => {
-    if (!res.ok) {
-      throw new Error(`Server mengembalikan status ${res.status} ${res.statusText}`);
-    }
-    return res.json();
+  .then(res=>res.json())
+  .then(data=>{
+    if(data.result!=="success") alert("⚠️ Gagal menyimpan ke server: "+(data.message||"Tidak diketahui"));
+    else alert("✅ Jawaban berhasil disimpan!");
   })
-  .then(data => {
-    if (data.result !== "success") {
-      alert("⚠️ Gagal menyimpan ke server: " + (data.message || "Tidak diketahui"));
-    } else {
-      alert("✅ Jawaban berhasil disimpan!");
-    }
-  })
-  .catch(err => {
+  .catch(err=>{
     console.error("Fetch error:", err);
-    alert("❌ Tidak dapat menghubungi server.\nPeriksa URL Web App, pengaturan akses, dan koneksi internet.\n\nDetail: " + err.message);
+    alert("❌ Tidak dapat menghubungi server. Periksa URL Web App dan koneksi internet.\n\nDetail: "+err.message);
   });
 }
 
-prevBtn.addEventListener("click", () => {
-  saveAnswer(currentIndex);
-  if (currentIndex > 0) { currentIndex--; renderQuestion(currentIndex); }
-});
-nextBtn.addEventListener("click", () => {
-  saveAnswer(currentIndex);
-  if (currentIndex < questions.length - 1) { currentIndex++; renderQuestion(currentIndex); }
-});
-submitBtn.addEventListener("click", () => { checkAnswers(); });
+prevBtn.addEventListener("click",()=>{ saveAnswer(currentIndex); if(currentIndex>0){currentIndex--; renderQuestion(currentIndex);} });
+nextBtn.addEventListener("click",()=>{ saveAnswer(currentIndex); if(currentIndex<questions.length-1){currentIndex++; renderQuestion(currentIndex);} });
+submitBtn.addEventListener("click",()=>{ checkAnswers(); });
+
 </script>
 </body>
 </html>
