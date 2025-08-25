@@ -2,57 +2,52 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ujian Kelas 7</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ujian Mid Semester Kelas 7</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 text-gray-900">
 
-<div class="container-fluid py-5">
+<div class="container py-5">
+
+  <!-- Logo -->
   <div class="text-center mb-4">
-    <img src="https://donggala.go.id/asset/logo/donggala3.png" alt="Logo" class="mx-auto h-20">
+    <img src="https://donggala.go.id/asset/logo/donggala3.png" alt="Logo Sekolah" class="mx-auto h-20" />
   </div>
+
   <h1 class="text-3xl text-center font-bold mb-4">Ujian Mid Semester - Kelas 7</h1>
 
-  <!-- Login Siswa -->
-  <div id="loginContainer" class="bg-white p-4 rounded shadow max-w-md mx-auto">
-    <h2 class="text-xl font-semibold mb-3 text-center">Login Siswa</h2>
-    <div class="mb-3">
-      <label for="siswaSelect" class="form-label">Pilih Nama Siswa:</label>
-      <select id="siswaSelect" class="form-select"><option>Loading...</option></select>
-    </div>
-    <div id="biodata" class="mb-3 hidden">
-      <p id="kelas"></p>
-      <p id="jk"></p>
-      <p id="nisn"></p>
-      <p id="tempat"></p>
-      <p id="tgl"></p>
-    </div>
-    <button id="startBtn" class="btn btn-primary w-full" disabled>Mulai Ujian</button>
+  <!-- Login siswa -->
+  <div id="loginDiv" class="bg-white p-4 rounded shadow max-w-md mx-auto">
+    <h2 class="text-xl font-semibold mb-3">Pilih Nama Siswa</h2>
+    <select id="siswaSelect" class="form-select mb-3">
+      <option value="">-- Pilih Siswa --</option>
+    </select>
+    <div id="biodata" class="mb-3 text-sm"></div>
+    <button id="startBtn" class="btn btn-primary" disabled>Mulai Ujian</button>
   </div>
 
+  <!-- Timer -->
+  <div id="timer" class="text-center text-lg font-semibold text-red-600 my-4 hidden">Loading timer...</div>
+
   <!-- Quiz -->
-  <div id="quizMain" class="row mt-5 hidden">
+  <div class="row hidden" id="quizSection">
     <div class="col-md-9">
       <div id="quizContainer" class="bg-white p-4 rounded shadow">
-        <div id="timer" class="text-center text-lg font-semibold text-red-600 mb-4"></div>
         <form id="quizForm" class="space-y-4"></form>
+
         <div class="flex justify-between mt-6">
           <button type="button" id="prevBtn" class="btn btn-secondary" disabled>Sebelumnya</button>
           <button type="button" id="nextBtn" class="btn btn-primary">Selanjutnya</button>
         </div>
+
         <div class="text-center mt-5">
           <button id="submitBtn" class="btn btn-success" style="display:none;">Kumpulkan Jawaban</button>
         </div>
       </div>
-      <div id="result" class="mt-5 p-4 bg-white rounded shadow text-center text-xl font-bold hidden"></div>
 
-      <div id="chartContainer" class="mt-5 bg-white p-4 rounded shadow hidden">
-        <h2 class="text-lg font-semibold mb-3 text-center">Grafik Progres Kelas</h2>
-        <canvas id="scoreChart"></canvas>
-      </div>
+      <div id="result" class="mt-5 p-4 bg-white rounded shadow text-center text-xl font-bold hidden"></div>
     </div>
 
     <div class="col-md-3">
@@ -60,132 +55,139 @@
         <h2 class="text-lg font-semibold mb-3 text-center">Nomor Soal</h2>
         <div id="questionNav" class="grid grid-cols-5 gap-2"></div>
         <p id="progress" class="text-sm font-semibold text-blue-600 mt-3 text-center"></p>
-        <p class="text-sm text-gray-500 mt-1 text-center">Klik nomor untuk lompat ke soal</p>
       </div>
     </div>
   </div>
+
 </div>
 
 <script>
-const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/pubhtml?gid=0&single=true"; // Ganti URL soal
-const siswaUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/pub?gid=1939472161&single=true&output=csv"; // Ganti URL siswa
-const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycby6j3v0vnRhj207W1SixASjTc1-ZYF1-h5dVqrqNxDuWCkrsrY6vgK47qXYdkOQxDwj/exec"; // Ganti Web App URL
+const siswaUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=1939472161";
+const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
+const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbwWe292a_r5wkVsZGI73bNzKB3wMKqVhs_xionngwD41V0y5z8scDFBd8r_LtarfVAN/exec"; // Ganti dengan URL Web App
 
-let questions=[], currentIndex=0, timeLeft=90*60, isSubmitted=false;
-let currentSiswa={};
+let siswaData = [];
+let questions = [];
+let currentIndex = 0;
+let timeLeft = 90*60;
+let isSubmitted = false;
+let currentSiswa = {};
 
-const quizForm=document.getElementById("quizForm");
-const timerDiv=document.getElementById("timer");
-const prevBtn=document.getElementById("prevBtn");
-const nextBtn=document.getElementById("nextBtn");
-const submitBtn=document.getElementById("submitBtn");
-const resultDiv=document.getElementById("result");
-const questionNav=document.getElementById("questionNav");
-const progressDiv=document.getElementById("progress");
-const chartContainer=document.getElementById("chartContainer");
-const loginContainer=document.getElementById("loginContainer");
-const quizMain=document.getElementById("quizMain");
-const siswaSelect=document.getElementById("siswaSelect");
-const biodataDiv=document.getElementById("biodata");
-const kelasP=document.getElementById("kelas");
-const jkP=document.getElementById("jk");
-const nisnP=document.getElementById("nisn");
-const tempatP=document.getElementById("tempat");
-const tglP=document.getElementById("tgl");
-const startBtn=document.getElementById("startBtn");
+const loginDiv = document.getElementById("loginDiv");
+const siswaSelect = document.getElementById("siswaSelect");
+const biodataDiv = document.getElementById("biodata");
+const startBtn = document.getElementById("startBtn");
+const quizSection = document.getElementById("quizSection");
+const quizForm = document.getElementById("quizForm");
+const timerDiv = document.getElementById("timer");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const submitBtn = document.getElementById("submitBtn");
+const resultDiv = document.getElementById("result");
+const questionNav = document.getElementById("questionNav");
+const progressDiv = document.getElementById("progress");
 
 // Ambil data siswa
-fetch(siswaUrl).then(res=>res.text()).then(text=>{
-  const lines=text.trim().split("\n");
-  siswaSelect.innerHTML="";
-  lines.slice(1).forEach(line=>{
-    const cols=line.split(",");
-    const option=document.createElement("option");
-    option.value=JSON.stringify({nama:cols[0],kelas:cols[1],jk:cols[2],nisn:cols[3],tempat:cols[4],tgl:cols[5]});
-    option.textContent=cols[0];
+fetch(siswaUrl).then(res => res.text()).then(text=>{
+  const lines = text.trim().split("\n");
+  for(let i=1;i<lines.length;i++){
+    const row = lines[i].split(",");
+    const obj = {
+      nama: row[0],
+      kelas: row[1],
+      jk: row[2],
+      nisn: row[3],
+      tempat: row[4],
+      tgl: row[5]
+    };
+    siswaData.push(obj);
+    const option = document.createElement("option");
+    option.value = i-1;
+    option.textContent = obj.nama;
     siswaSelect.appendChild(option);
-  });
-  startBtn.disabled=false;
+  }
 });
 
-siswaSelect.addEventListener("change",()=>{
-  currentSiswa=JSON.parse(siswaSelect.value);
-  biodataDiv.classList.remove("hidden");
-  kelasP.textContent="Kelas: "+currentSiswa.kelas;
-  jkP.textContent="JK: "+currentSiswa.jk;
-  nisnP.textContent="NISN: "+currentSiswa.nisn;
-  tempatP.textContent="Tempat Lahir: "+currentSiswa.tempat;
-  tglP.textContent="Tanggal Lahir: "+currentSiswa.tgl;
+siswaSelect.addEventListener("change", ()=>{
+  const idx = siswaSelect.value;
+  if(idx===""){
+    biodataDiv.innerHTML="";
+    startBtn.disabled=true;
+  } else {
+    currentSiswa = siswaData[idx];
+    biodataDiv.innerHTML = `
+      Kelas: ${currentSiswa.kelas}<br>
+      JK: ${currentSiswa.jk}<br>
+      NISN: ${currentSiswa.nisn}<br>
+      Tempat Lahir: ${currentSiswa.tempat}<br>
+      Tanggal Lahir: ${currentSiswa.tgl}
+    `;
+    startBtn.disabled=false;
+  }
 });
 
-startBtn.addEventListener("click",()=>{
-  loginContainer.classList.add("hidden");
-  quizMain.classList.remove("hidden");
-  loadQuestions();
+startBtn.addEventListener("click", ()=>{
+  loginDiv.classList.add("hidden");
+  quizSection.classList.remove("hidden");
+  timerDiv.classList.remove("hidden");
+  fetch(csvUrl)
+    .then(res=>res.text())
+    .then(text=>{
+      questions = parseCSV(text);
+      buildNav();
+      renderQuestion(0);
+      startTimer();
+    });
 });
-
-function loadQuestions(){
-  fetch(csvUrl).then(res=>res.text()).then(text=>{
-    questions=parseCSV(text);
-    buildNav();
-    renderQuestion(0);
-    startTimer();
-  });
-}
 
 function parseCSV(text){
-  const lines=text.trim().split("\n");
-  const headers=lines[0].split(",");
-  const data=[];
+  const lines = text.trim().split("\n");
+  const headers = lines[0].split(",");
+  const data = [];
   for(let i=1;i<lines.length;i++){
-    const row=lines[i].split(",");
-    const obj={};
-    headers.forEach((h,j)=> obj[h.trim()]=row[j]?row[j].trim():"");
+    const row = lines[i].split(",");
+    const obj = {};
+    headers.forEach((h,j)=>obj[h.trim()]=row[j]?row[j].trim():"");
     data.push(obj);
   }
   return data;
 }
 
-// Render soal
 function renderQuestion(index){
-  const q=questions[index];
-  quizForm.innerHTML=`
+  const q = questions[index];
+  quizForm.innerHTML = `
     <div class="text-lg font-semibold mb-2">${q.No}. ${q.Soal}</div>
-    ${q.Gambar?`<img src="${q.Gambar}" class="mb-3 max-w-full h-auto rounded border">`:''}
-    ${['A','B','C','D'].map(opt=>`
+    ${q.Gambar ? `<img src="${q.Gambar}" class="mb-3 max-w-full h-auto rounded border">` : ""}
+    ${["A","B","C","D"].map(opt=>`
       <div class="form-check">
         <input class="form-check-input" type="radio" name="q${index}" id="q${index}_${opt}" value="${opt}">
         <label class="form-check-label" for="q${index}_${opt}">${opt}. ${q[opt]}</label>
       </div>
-    `).join('')}
+    `).join("")}
   `;
-  const selected=document.querySelector(`input[name="q${index}"][value="${q.userAnswer||''}"]`);
+  const selected = document.querySelector(`input[name="q${index}"][value="${q.userAnswer||""}"]`);
   if(selected) selected.checked=true;
-  prevBtn.disabled=index===0;
-  nextBtn.style.display=index===questions.length-1?"none":"inline-block";
-  submitBtn.style.display=index===questions.length-1?"inline-block":"none";
+
+  prevBtn.disabled = index===0;
+  nextBtn.style.display = index===questions.length-1?"none":"inline-block";
+  submitBtn.style.display = index===questions.length-1?"inline-block":"none";
+
   updateNav();
 }
 
 function saveAnswer(index){
-  const selected=document.querySelector(`input[name="q${index}"]:checked`);
-  questions[index].userAnswer=selected?selected.value:null;
+  const selected = document.querySelector(`input[name="q${index}"]:checked`);
+  questions[index].userAnswer = selected?selected.value:null;
   updateNav();
 }
 
-// Navigasi soal
 function buildNav(){
   questionNav.innerHTML="";
   questions.forEach((q,i)=>{
-    const btn=document.createElement("button");
+    const btn = document.createElement("button");
     btn.textContent=q.No;
-    btn.className="w-10 h-10 rounded text-white font-bold text-sm "+
-      (i===currentIndex?"bg-blue-600":q.userAnswer?"bg-green-500":"bg-gray-400");
-    btn.onclick=()=>{
-      saveAnswer(currentIndex);
-      currentIndex=i;
-      renderQuestion(currentIndex);
-    };
+    btn.className="w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 bg-gray-400";
+    btn.onclick=()=>{saveAnswer(currentIndex); currentIndex=i; renderQuestion(i);};
     questionNav.appendChild(btn);
   });
   updateProgress();
@@ -193,21 +195,20 @@ function buildNav(){
 
 function updateNav(){
   [...questionNav.children].forEach((btn,i)=>{
-    btn.className="w-10 h-10 rounded text-white font-bold text-sm "+
-      (i===currentIndex?"bg-blue-600":questions[i].userAnswer?"bg-green-500":"bg-gray-400");
+    btn.className="w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 " +
+      (i===currentIndex?"bg-blue-600":(questions[i].userAnswer?"bg-green-500":"bg-gray-400"));
   });
   updateProgress();
 }
 
 function updateProgress(){
-  const answered=questions.filter(q=>q.userAnswer).length;
+  const answered = questions.filter(q=>q.userAnswer).length;
   progressDiv.textContent=`Terjawab: ${answered} / ${questions.length}`;
 }
 
-// Timer
 function renderTimer(){
-  const m=String(Math.floor(timeLeft/60)).padStart(2,'0');
-  const s=String(timeLeft%60).padStart(2,'0');
+  const m = String(Math.floor(timeLeft/60)).padStart(2,"0");
+  const s = String(timeLeft%60).padStart(2,"0");
   timerDiv.textContent=`Waktu Tersisa: ${m}:${s}`;
 }
 
@@ -219,81 +220,46 @@ function startTimer(){
   },1000);
 }
 
-// Submit jawaban
-submitBtn.addEventListener("click",()=>{
-  saveAnswer(currentIndex);
-  checkAnswers();
-});
-
-prevBtn.addEventListener("click",()=>{
-  saveAnswer(currentIndex);
-  if(currentIndex>0){currentIndex--; renderQuestion(currentIndex);}
-});
-
-nextBtn.addEventListener("click",()=>{
-  saveAnswer(currentIndex);
-  if(currentIndex<questions.length-1){currentIndex++; renderQuestion(currentIndex);}
-});
-
 function checkAnswers(){
   isSubmitted=true;
   let score=0;
   let jawabanUser=[];
-  questions.forEach((q,i)=>{
-    const jawaban=q.userAnswer||"Tidak dijawab";
+  questions.forEach(q=>{
+    const jawaban = q.userAnswer || "Tidak dijawab";
     jawabanUser.push(`${q.No}: ${jawaban}`);
     if(jawaban===q.Jawaban) score++;
   });
-
-  resultDiv.innerHTML=`Skor Anda: ${score} dari ${questions.length}`;
+  resultDiv.innerHTML = `Skor Anda: ${score} dari ${questions.length}`;
   resultDiv.classList.remove("hidden");
 
-  const resultData={
-    nama:currentSiswa.nama,
-    kelas:currentSiswa.kelas,
-    jk:currentSiswa.jk,
-    nisn:currentSiswa.nisn,
-    tempat:currentSiswa.tempat,
-    tgl:currentSiswa.tgl,
-    jawaban:jawabanUser.join("; "),
-    skor:score,
-    waktu:(90*60)-timeLeft
+  const resultData = {
+    nama: currentSiswa.nama,
+    kelas: currentSiswa.kelas,
+    jk: currentSiswa.jk,
+    nisn: currentSiswa.nisn,
+    tempat: currentSiswa.tempat,
+    tgl: currentSiswa.tgl,
+    jawaban: jawabanUser.join("; "),
+    skor: score,
+    waktu: (90*60)-timeLeft
   };
 
   fetch(googleAppsScriptUrl,{
     method:"POST",
-    body:JSON.stringify(resultData),
-    headers:{"Content-Type":"application/json"}
+    body: JSON.stringify(resultData),
+    headers: {"Content-Type":"application/json"}
   }).then(res=>res.json())
     .then(data=>{
       if(data.result!=="success") alert("Gagal menyimpan: "+data.message);
-      else loadChart();
     }).catch(err=>{
       alert("Error: "+err.message);
     });
 }
 
-// Grafik progres
-function loadChart(){
-  fetch(googleAppsScriptUrl+"?action=rekap")
-    .then(res=>res.json())
-    .then(data=>{
-      chartContainer.classList.remove("hidden");
-      const ctx=document.getElementById("scoreChart").getContext("2d");
-      new Chart(ctx,{
-        type:'bar',
-        data:{
-          labels:data.map(d=>d.nama),
-          datasets:[{
-            label:'Skor',
-            data:data.map(d=>d.skor),
-            backgroundColor:'rgba(54,162,235,0.6)'
-          }]
-        },
-        options:{responsive:true, scales:{y:{beginAtZero:true}}}
-      });
-    });
-}
+prevBtn.addEventListener("click", ()=>{saveAnswer(currentIndex); if(currentIndex>0){currentIndex--; renderQuestion(currentIndex);}});
+nextBtn.addEventListener("click", ()=>{saveAnswer(currentIndex); if(currentIndex<questions.length-1){currentIndex++; renderQuestion(currentIndex);}});
+submitBtn.addEventListener("click", ()=>{saveAnswer(currentIndex); checkAnswers();});
 </script>
+
 </body>
 </html>
