@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Soal Ujian dengan Simpan ke Google Sheets</title>
+  <title>Soal Mid Semester Kelas 7"</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 20px; background:#f2f2f2; }
     h1 { text-align:center; margin-bottom:10px; }
@@ -29,10 +29,11 @@
 <div id="result" class="hasil" style="display:none;"></div>
 
 <script>
+  // CSV soal dari Google Sheets
   const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
 
-  // Ganti ini dengan URL Web App Google Apps Script yang kamu dapatkan saat deploy
-  const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycby4m75zxkdhTskwhfV4gVcu95EzS09Sa85Rkm0bBfHTQrUBEFwktzDHXNLV5t7lQbxO/exec";
+  // Ganti ini dengan URL Web App Google Apps Script kamu
+  const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbwrSB7vTtkp6jAUS8fyv1IdXtTQPSmr2UbUYEojyrtqsax_aSrPNpgDspsuoWX3xsoY/exec";
 
   let questions = [];
   const quizForm = document.getElementById('quizForm');
@@ -40,7 +41,7 @@
   const submitBtn = document.getElementById('submitBtn');
   const timerDiv = document.getElementById('timer');
 
-  const totalTime = 10 * 60; // 10 menit
+  const totalTime = 10 * 60; // 10 menit (dalam detik)
   let timeLeft = totalTime;
   let timerInterval = null;
   let isSubmitted = false;
@@ -153,7 +154,6 @@
     resultDiv.style.display = 'block';
     resultDiv.textContent = `Skor Anda: ${score} dari ${questions.length}`;
 
-    // Minta input nama
     let nama = prompt("Masukkan nama Anda:");
     if(!nama) nama = "Anonim";
 
