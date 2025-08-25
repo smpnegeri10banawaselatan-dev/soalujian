@@ -58,10 +58,10 @@
 </div>
 
 <script>
-// Perbarui URL dengan ID spreadsheet dan GID yang benar
+// URL Spreadsheet dan Apps Script
 const siswaUrl = "https://docs.google.com/spreadsheets/d/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/export?format=csv&gid=1939472161";
 const csvUrl = "https://docs.google.com/spreadsheets/d/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/export?format=csv&gid=0";
-const googleAppsScriptUrl = "URL_WEB_APP_ANDA_YANG_VALID"; // Ganti dengan URL Web App Anda
+const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbxik9K__gEsYJ6cpZEYar0_tS936jw0C7wd2HQYmE0UfhtM5GsMgRaCIQqqZhjNxy90/exec"; 
 
 let siswaData = [];
 let questions = [];
@@ -85,25 +85,42 @@ const questionNav = document.getElementById("questionNav");
 const progressDiv = document.getElementById("progress");
 
 // Ambil data siswa
-fetch(siswaUrl).then(res=>res.text()).then(text=>{
-  const lines = text.trim().split("\n");
-  for(let i=1;i<lines.length;i++){
-    const row = lines[i].split(",");
-    const obj = {
-      nama: row[0],
-      kelas: row[1],
-      jk: row[2],
-      nisn: row[3],
-      tempat: row[4],
-      tgl: row[5]
-    };
-    siswaData.push(obj);
-    const option = document.createElement("option");
-    option.value = i-1;
-    option.textContent = obj.nama;
-    siswaSelect.appendChild(option);
-  }
-});
+fetch(siswaUrl)
+  .then(res => {
+    if (!res.ok) throw new Error("Gagal mengambil data siswa.");
+    return res.text();
+  })
+  .then(text => {
+    // Menghapus karakter BOM jika ada
+    const cleanText = text.startsWith('\uFEFF') ? text.substring(1) : text;
+    const lines = cleanText.trim().split("\n");
+    if (lines.length <= 1) {
+      console.error("Data siswa kosong atau tidak valid.");
+      return;
+    }
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i].split(",");
+      if (row.length >= 6) { // Pastikan baris memiliki jumlah kolom yang memadai
+        const obj = {
+          nama: row[0],
+          kelas: row[1],
+          jk: row[2],
+          nisn: row[3],
+          tempat: row[4],
+          tgl: row[5]
+        };
+        siswaData.push(obj);
+        const option = document.createElement("option");
+        option.value = i - 1;
+        option.textContent = obj.nama;
+        siswaSelect.appendChild(option);
+      }
+    }
+  })
+  .catch(err => {
+    alert("Error: " + err.message);
+    console.error(err);
+  });
 
 siswaSelect.addEventListener("change", ()=>{
   const idx = siswaSelect.value;
@@ -128,17 +145,29 @@ startBtn.addEventListener("click", ()=>{
   quizSection.classList.remove("hidden");
   timerDiv.classList.remove("hidden");
   fetch(csvUrl)
-    .then(res=>res.text())
+    .then(res => {
+      if (!res.ok) throw new Error("Gagal mengambil data soal.");
+      return res.text();
+    })
     .then(text=>{
       questions = parseCSV(text);
+      if (questions.length === 0) {
+        alert("Soal ujian tidak ditemukan. Periksa spreadsheet Anda.");
+        return;
+      }
       buildNav();
       renderQuestion(0);
       startTimer();
+    })
+    .catch(err => {
+      alert("Error: " + err.message);
+      console.error(err);
     });
 });
 
 function parseCSV(text){
-  const lines = text.trim().split("\n");
+  const cleanText = text.startsWith('\uFEFF') ? text.substring(1) : text;
+  const lines = cleanText.trim().split("\n");
   const headers = lines[0].split(",");
   const data = [];
   for(let i=1;i<lines.length;i++){
