@@ -8,7 +8,6 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 text-gray-900">
-
 <div class="container py-5">
 
   <div class="text-center mb-4">
@@ -58,18 +57,20 @@
 </div>
 
 <script>
-// URL Spreadsheet dan Apps Script
+// ================== KONFIG ==================
 const siswaUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=1939472161";
-const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
-const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbwQ0165X-bbux4X0Uro1ZziibcHS0b-SD1dm-Ku1q60BI7W4YeJAcN36cx4V7lVhwEv/exec";
+const csvUrl   = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
+const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbxKXTu6wkBf7T9wgXDKZiNOpdR8Ps8DToyAc_UWm5XJX9WBeujhO8kkzymKdvdZCExH/exec"; // <— GANTI dengan URL Web App
 
 let siswaData = [];
 let questions = [];
 let currentIndex = 0;
-let timeLeft = 90*60;
+let timeLeft = 90 * 60;
 let isSubmitted = false;
 let currentSiswa = {};
+let timerHandle = null;
 
+// Elemen
 const loginDiv = document.getElementById("loginDiv");
 const siswaSelect = document.getElementById("siswaSelect");
 const biodataDiv = document.getElementById("biodata");
@@ -84,49 +85,41 @@ const resultDiv = document.getElementById("result");
 const questionNav = document.getElementById("questionNav");
 const progressDiv = document.getElementById("progress");
 
-// Ambil data siswa
+// ===== Ambil data siswa =====
 fetch(siswaUrl)
   .then(res => {
-    if (!res.ok) throw new Error("Gagal mengambil data siswa.");
+    if (!res.ok) throw new Error(`Gagal ambil data siswa: ${res.status} ${res.statusText}`);
     return res.text();
   })
   .then(text => {
-    // Menghapus karakter BOM jika ada
-    const cleanText = text.startsWith('\uFEFF') ? text.substring(1) : text;
-    const lines = cleanText.trim().split("\n");
-    if (lines.length <= 1) {
-      console.error("Data siswa kosong atau tidak valid.");
-      return;
-    }
-    for (let i = 1; i < lines.length; i++) {
-      const row = lines[i].split(",");
-      if (row.length >= 6) { // Pastikan baris memiliki jumlah kolom yang memadai
-        const obj = {
-          nama: row[0],
-          kelas: row[1],
-          jk: row[2],
-          nisn: row[3],
-          tempat: row[4],
-          tgl: row[5]
-        };
-        siswaData.push(obj);
-        const option = document.createElement("option");
-        option.value = i - 1;
-        option.textContent = obj.nama;
-        siswaSelect.appendChild(option);
-      }
-    }
+    const rows = parseCSV(text);
+    // Asumsikan header: nama,kelas,jk,nisn,tempat,tgl
+    siswaData = rows.map(r => ({
+      nama: r[0] || "",
+      kelas: r[1] || "",
+      jk: r[2] || "",
+      nisn: r[3] || "",
+      tempat: r[4] || "",
+      tgl: r[5] || ""
+    })).filter(s => s.nama);
+
+    siswaData.forEach((obj, i) => {
+      const option = document.createElement("option");
+      option.value = i;
+      option.textContent = obj.nama;
+      siswaSelect.appendChild(option);
+    });
   })
   .catch(err => {
-    alert("Error: " + err.message);
+    alert("Tidak bisa memuat daftar siswa. Detail: " + err.message);
     console.error(err);
   });
 
-siswaSelect.addEventListener("change", ()=>{
+siswaSelect.addEventListener("change", () => {
   const idx = siswaSelect.value;
-  if(idx===""){
-    biodataDiv.innerHTML="";
-    startBtn.disabled=true;
+  if (idx === "") {
+    biodataDiv.innerHTML = "";
+    startBtn.disabled = true;
   } else {
     currentSiswa = siswaData[idx];
     biodataDiv.innerHTML = `
@@ -136,21 +129,49 @@ siswaSelect.addEventListener("change", ()=>{
       Tempat Lahir: ${currentSiswa.tempat}<br>
       Tanggal Lahir: ${currentSiswa.tgl}
     `;
-    startBtn.disabled=false;
+    startBtn.disabled = false;
   }
 });
 
-startBtn.addEventListener("click", ()=>{
+startBtn.addEventListener("click", () => {
+  if (!currentSiswa.nama) {
+    alert("Silakan pilih siswa terlebih dahulu.");
+    return;
+  }
   loginDiv.classList.add("hidden");
   quizSection.classList.remove("hidden");
   timerDiv.classList.remove("hidden");
+
   fetch(csvUrl)
     .then(res => {
-      if (!res.ok) throw new Error("Gagal mengambil data soal.");
+      if (!res.ok) throw new Error(`Gagal ambil data soal: ${res.status} ${res.statusText}`);
       return res.text();
     })
-    .then(text=>{
-      questions = parseCSV(text);
+    .then(text => {
+      const rows = parseCSV(text);
+      // Baris pertama = header. Harapkan header: No,Soal,Gambar,A,B,C,D,Jawaban
+      const header = rows.shift().map(h => String(h).trim());
+      const idxNo = header.indexOf("No");
+      const idxSoal = header.indexOf("Soal");
+      const idxGambar = header.indexOf("Gambar");
+      const idxA = header.indexOf("A");
+      const idxB = header.indexOf("B");
+      const idxC = header.indexOf("C");
+      const idxD = header.indexOf("D");
+      const idxJawaban = header.indexOf("Jawaban");
+
+      questions = rows.map(r => ({
+        No: r[idxNo] || "",
+        Soal: r[idxSoal] || "",
+        Gambar: r[idxGambar] || "",
+        A: r[idxA] || "",
+        B: r[idxB] || "",
+        C: r[idxC] || "",
+        D: r[idxD] || "",
+        Jawaban: (r[idxJawaban] || "").toString().trim().toUpperCase(),
+        userAnswer: null
+      })).filter(q => q.No && q.Soal);
+
       if (questions.length === 0) {
         alert("Soal ujian tidak ditemukan. Periksa spreadsheet Anda.");
         return;
@@ -160,103 +181,159 @@ startBtn.addEventListener("click", ()=>{
       startTimer();
     })
     .catch(err => {
-      alert("Error: " + err.message);
+      alert("Tidak bisa memuat soal. Detail: " + err.message);
       console.error(err);
     });
 });
 
-function parseCSV(text){
-  const cleanText = text.startsWith('\uFEFF') ? text.substring(1) : text;
-  const lines = cleanText.trim().split("\n");
-  const headers = lines[0].split(",");
-  const data = [];
-  for(let i=1;i<lines.length;i++){
-    const row = lines[i].split(",");
-    const obj = {};
-    headers.forEach((h,j)=>obj[h.trim()]=row[j]?row[j].trim():"");
-    data.push(obj);
+// ===== Parser CSV sederhana (dukung tanda kutip & koma dalam field) =====
+function parseCSV(text) {
+  const clean = text.startsWith('\uFEFF') ? text.slice(1) : text;
+  const rows = [];
+  let row = [];
+  let cur = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < clean.length; i++) {
+    const c = clean[i];
+    if (inQuotes) {
+      if (c === '"') {
+        const next = clean[i + 1];
+        if (next === '"') { // escaped quote
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += c;
+      }
+    } else {
+      if (c === '"') {
+        inQuotes = true;
+      } else if (c === ',') {
+        row.push(cur);
+        cur = '';
+      } else if (c === '\n' || c === '\r') {
+        if (c === '\r' && clean[i + 1] === '\n') i++; // handle CRLF
+        row.push(cur);
+        rows.push(row);
+        row = [];
+        cur = '';
+      } else {
+        cur += c;
+      }
+    }
   }
-  return data;
+  // tail
+  if (cur.length > 0 || inQuotes || row.length) {
+    row.push(cur);
+    rows.push(row);
+  }
+  return rows.filter(r => r.length && r.join('').trim().length);
 }
 
-function renderQuestion(index){
+// ===== UI & Navigasi =====
+function renderQuestion(index) {
   const q = questions[index];
   quizForm.innerHTML = `
     <div class="text-lg font-semibold mb-2">${q.No}. ${q.Soal}</div>
     ${q.Gambar ? `<img src="${q.Gambar}" class="mb-3 max-w-full h-auto rounded border">` : ""}
-    ${["A","B","C","D"].map(opt=>`
+    ${["A","B","C","D"].map(opt => `
       <div class="form-check">
         <input class="form-check-input" type="radio" name="q${index}" id="q${index}_${opt}" value="${opt}">
         <label class="form-check-label" for="q${index}_${opt}">${opt}. ${q[opt]}</label>
       </div>
     `).join("")}
   `;
-  const selected = document.querySelector(`input[name="q${index}"][value="${q.userAnswer||""}"]`);
-  if(selected) selected.checked=true;
-
-  prevBtn.disabled = index===0;
-  nextBtn.style.display = index===questions.length-1?"none":"inline-block";
-  submitBtn.style.display = index===questions.length-1?"inline-block":"none";
-
+  if (q.userAnswer) {
+    const sel = document.querySelector(`input[name="q${index}"][value="${q.userAnswer}"]`);
+    if (sel) sel.checked = true;
+  }
+  prevBtn.disabled = index === 0;
+  nextBtn.style.display = index === questions.length - 1 ? "none" : "inline-block";
+  submitBtn.style.display = index === questions.length - 1 ? "inline-block" : "none";
   updateNav();
 }
 
-function saveAnswer(index){
+function saveAnswer(index) {
   const selected = document.querySelector(`input[name="q${index}"]:checked`);
-  questions[index].userAnswer = selected?selected.value:null;
+  questions[index].userAnswer = selected ? selected.value : null;
   updateNav();
 }
 
-function buildNav(){
-  questionNav.innerHTML="";
-  questions.forEach((q,i)=>{
+function buildNav() {
+  questionNav.innerHTML = "";
+  questions.forEach((q, i) => {
     const btn = document.createElement("button");
-    btn.textContent=q.No;
-    btn.className="w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 bg-gray-400";
-    btn.onclick=()=>{saveAnswer(currentIndex); currentIndex=i; renderQuestion(i);};
+    btn.type = "button";
+    btn.textContent = q.No;
+    btn.className = "w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 bg-gray-400";
+    btn.onclick = () => { saveAnswer(currentIndex); currentIndex = i; renderQuestion(i); };
     questionNav.appendChild(btn);
   });
   updateProgress();
 }
 
-function updateNav(){
-  [...questionNav.children].forEach((btn,i)=>{
-    btn.className="w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 " +
-      (i===currentIndex?"bg-blue-600":(questions[i].userAnswer?"bg-green-500":"bg-gray-400"));
+function updateNav() {
+  [...questionNav.children].forEach((btn, i) => {
+    btn.className = "w-10 h-10 rounded text-white font-bold text-sm transition-colors duration-200 " +
+      (i === currentIndex ? "bg-blue-600" : (questions[i].userAnswer ? "bg-green-500" : "bg-gray-400"));
   });
   updateProgress();
 }
 
-function updateProgress(){
-  const answered = questions.filter(q=>q.userAnswer).length;
-  progressDiv.textContent=`Terjawab: ${answered} / ${questions.length}`;
+function updateProgress() {
+  const answered = questions.filter(q => q.userAnswer).length;
+  progressDiv.textContent = `Terjawab: ${answered} / ${questions.length}`;
 }
 
-function renderTimer(){
-  const m = String(Math.floor(timeLeft/60)).padStart(2,"0");
-  const s = String(timeLeft%60).padStart(2,"0");
-  timerDiv.textContent=`Waktu Tersisa: ${m}:${s}`;
+// ===== Timer =====
+function renderTimer() {
+  const m = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+  const s = String(timeLeft % 60).padStart(2, "0");
+  timerDiv.textContent = `Waktu Tersisa: ${m}:${s}`;
 }
 
-function startTimer(){
+function startTimer() {
   renderTimer();
-  setInterval(()=>{
-    if(timeLeft<=0 && !isSubmitted) checkAnswers();
-    if(timeLeft>0){timeLeft--; renderTimer();}
-  },1000);
+  timerHandle = setInterval(() => {
+    if (isSubmitted) { clearInterval(timerHandle); return; }
+    if (timeLeft <= 0) {
+      clearInterval(timerHandle);
+      if (!isSubmitted) checkAnswers();
+      return;
+    }
+    timeLeft--;
+    renderTimer();
+  }, 1000);
 }
 
-function checkAnswers(){
-  isSubmitted=true;
-  let score=0;
-  let jawabanUser=[];
-  questions.forEach(q=>{
-    const jawaban = q.userAnswer || "Tidak dijawab";
-    jawabanUser.push(`${q.No}: ${jawaban}`);
-    if(jawaban===q.Jawaban) score++;
+// ===== Submit & Simpan =====
+function disableAll() {
+  prevBtn.disabled = true;
+  nextBtn.disabled = true;
+  submitBtn.disabled = true;
+  [...document.querySelectorAll("input[type=radio]")].forEach(el => el.disabled = true);
+}
+
+function checkAnswers() {
+  if (isSubmitted) return;
+  isSubmitted = true;
+  saveAnswer(currentIndex);
+  if (timerHandle) clearInterval(timerHandle);
+
+  let score = 0;
+  const jawabanUser = [];
+  questions.forEach(q => {
+    const j = q.userAnswer || "Tidak dijawab";
+    jawabanUser.push(`${q.No}: ${j}`);
+    if (q.userAnswer && q.userAnswer.toUpperCase() === q.Jawaban) score++;
   });
+
   resultDiv.innerHTML = `Skor Anda: ${score} dari ${questions.length}`;
   resultDiv.classList.remove("hidden");
+  disableAll();
 
   const resultData = {
     nama: currentSiswa.nama,
@@ -267,38 +344,43 @@ function checkAnswers(){
     tgl: currentSiswa.tgl,
     jawaban: jawabanUser.join("; "),
     skor: score,
-    waktu: (90*60)-timeLeft
+    waktu: (90 * 60) - timeLeft
   };
 
- fetch(googleAppsScriptUrl, {
-  method: "POST",
-  body: JSON.stringify(resultData),
-  headers: { "Content-Type": "application/json" }
-})
-.then(res => {
-  if (!res.ok) {
-    throw new Error(`Server mengembalikan status ${res.status} ${res.statusText}`);
-  }
-  return res.json();
-})
-.then(data => {
-  if (data.result !== "success") {
-    alert("⚠️ Gagal menyimpan ke server: " + (data.message || "Tidak diketahui"));
-  } else {
-    alert("✅ Jawaban berhasil disimpan!");
-  }
-})
-.catch(err => {
-  console.error("Fetch error:", err);
-  alert("❌ Tidak dapat menghubungi server.\nPeriksa koneksi internet dan URL Web App.\n\nDetail: " + err.message);
-});
-
+  fetch(googleAppsScriptUrl, {
+    method: "POST",
+    body: JSON.stringify(resultData),
+    headers: { "Content-Type": "application/json" },
+    mode: "cors"
+  })
+  .then(res => {
+    if (!res.ok) {
+      throw new Error(`Server mengembalikan status ${res.status} ${res.statusText}`);
+    }
+    return res.json();
+  })
+  .then(data => {
+    if (data.result !== "success") {
+      alert("⚠️ Gagal menyimpan ke server: " + (data.message || "Tidak diketahui"));
+    } else {
+      alert("✅ Jawaban berhasil disimpan!");
+    }
+  })
+  .catch(err => {
+    console.error("Fetch error:", err);
+    alert("❌ Tidak dapat menghubungi server.\nPeriksa URL Web App, pengaturan akses, dan koneksi internet.\n\nDetail: " + err.message);
+  });
 }
 
-prevBtn.addEventListener("click", ()=>{saveAnswer(currentIndex); if(currentIndex>0){currentIndex--; renderQuestion(currentIndex);}});
-nextBtn.addEventListener("click", ()=>{saveAnswer(currentIndex); if(currentIndex<questions.length-1){currentIndex++; renderQuestion(currentIndex);}});
-submitBtn.addEventListener("click", ()=>{saveAnswer(currentIndex); checkAnswers();});
+prevBtn.addEventListener("click", () => {
+  saveAnswer(currentIndex);
+  if (currentIndex > 0) { currentIndex--; renderQuestion(currentIndex); }
+});
+nextBtn.addEventListener("click", () => {
+  saveAnswer(currentIndex);
+  if (currentIndex < questions.length - 1) { currentIndex++; renderQuestion(currentIndex); }
+});
+submitBtn.addEventListener("click", () => { checkAnswers(); });
 </script>
-
 </body>
 </html>
