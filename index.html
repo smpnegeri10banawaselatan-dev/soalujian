@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Soal Ujian Interaktif dari Google Sheets</title>
+  <title>Soal Ujian Interaktif dengan Timer & Simpan Hasil</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -14,7 +14,14 @@
     }
     h1 {
       text-align: center;
-      margin-bottom: 30px;
+      margin-bottom: 10px;
+    }
+    #timer {
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #333;
     }
     .soal {
       background: white;
@@ -38,8 +45,12 @@
       margin: 30px auto 0;
       transition: background-color 0.3s ease;
     }
-    button:hover {
+    button:hover:not(:disabled) {
       background: #45a049;
+    }
+    button:disabled {
+      background: grey;
+      cursor: not-allowed;
     }
     .hasil {
       background: #fff;
@@ -63,6 +74,7 @@
 <body>
 
   <h1>Soal Ujian Pilihan Ganda</h1>
+  <div id="timer">Loading timer...</div>
 
   <form id="quizForm"></form>
 
@@ -78,8 +90,15 @@
     const quizForm = document.getElementById('quizForm');
     const resultDiv = document.getElementById('result');
     const submitBtn = document.getElementById('submitBtn');
+    const timerDiv = document.getElementById('timer');
 
-    // Fungsi sederhana untuk parsing CSV ke array object
+    // Timer settings
+    const totalTime = 10 * 60; // 10 menit dalam detik
+    let timeLeft = totalTime;
+    let timerInterval = null;
+    let isSubmitted = false;
+
+    // Parsing CSV to array object
     function parseCSV(text) {
       const lines = text.trim().split('\n');
       const headers = lines[0].split(',');
@@ -96,6 +115,7 @@
       return data;
     }
 
+    // Render soal ke form
     function renderQuestions() {
       quizForm.innerHTML = "";
       questions.forEach((q, index) => {
@@ -119,7 +139,11 @@
       submitBtn.textContent = "Submit Jawaban";
     }
 
+    // Hitung skor dan tampilkan feedback
     function checkAnswers() {
+      if(isSubmitted) return;
+      isSubmitted = true;
+
       let score = 0;
       questions.forEach((q, index) => {
         const selected = document.querySelector(`input[name="q${index}"]:checked`);
@@ -137,30 +161,82 @@
         }
       });
 
+      submitBtn.disabled = true;
+      timerDiv.textContent = "Waktu habis atau soal telah disubmit.";
+
       resultDiv.style.display = 'block';
       resultDiv.textContent = `Skor Anda: ${score} dari ${questions.length}`;
+
+      // Simpan hasil ke localStorage
+      const resultData = {
+        score: score,
+        total: questions.length,
+        timeUsed: totalTime - timeLeft,
+        timestamp: new Date().toISOString()
+      };
+      localStorage.setItem('quizResult', JSON.stringify(resultData));
+    }
+
+    // Render timer
+    function renderTimer() {
+      const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+      const seconds = (timeLeft % 60).toString().padStart(2, '0');
+      timerDiv.textContent = `Waktu tersisa: ${minutes}:${seconds}`;
+    }
+
+    // Mulai timer mundur
+    function startTimer() {
+      renderTimer();
+      timerInterval = setInterval(() => {
+        if(timeLeft <= 0) {
+          clearInterval(timerInterval);
+          checkAnswers();
+          return;
+        }
+        timeLeft--;
+        renderTimer();
+      }, 1000);
     }
 
     submitBtn.addEventListener('click', e => {
       e.preventDefault();
       checkAnswers();
       window.scrollTo(0, document.body.scrollHeight);
+      clearInterval(timerInterval);
     });
 
-    // Ambil CSV dari Google Sheets dan parse
+    // Muat soal dan mulai timer
     fetch(csvUrl)
       .then(response => response.text())
       .then(text => {
         questions = parseCSV(text);
         renderQuestions();
+
+        // Cek kalau ada hasil tersimpan di localStorage, tampilkan
+        const savedResult = localStorage.getItem('quizResult');
+        if(savedResult){
+          const res = JSON.parse(savedResult);
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = `
+            <p><strong>Hasil terakhir:</strong></p>
+            <p>Skor: ${res.score} dari ${res.total}</p>
+            <p>Waktu digunakan: ${Math.floor(res.timeUsed/60)} menit ${res.timeUsed%60} detik</p>
+            <p>Tanggal: ${new Date(res.timestamp).toLocaleString()}</p>
+          `;
+          submitBtn.disabled = true;
+          timerDiv.textContent = "Ujian sudah disubmit.";
+          isSubmitted = true;
+        } else {
+          startTimer();
+        }
       })
       .catch(err => {
         quizForm.innerHTML = "<p>Gagal memuat soal. Periksa koneksi atau akses Google Sheet.</p>";
         submitBtn.disabled = true;
         submitBtn.textContent = "Gagal Memuat";
+        timerDiv.textContent = "";
         console.error(err);
       });
-
   </script>
 
 </body>
