@@ -45,7 +45,8 @@
         <div class="bg-white p-3 rounded shadow">
           <h2 class="text-lg font-semibold mb-3 text-center">Nomor Soal</h2>
           <div id="questionNav" class="grid grid-cols-5 gap-2"></div>
-          <p class="text-sm text-gray-500 mt-3 text-center">Klik nomor untuk lompat ke soal</p>
+          <p id="progress" class="text-sm font-semibold text-blue-600 mt-3 text-center"></p>
+          <p class="text-sm text-gray-500 mt-1 text-center">Klik nomor untuk lompat ke soal</p>
         </div>
       </div>
     </div>
@@ -66,6 +67,7 @@
     const submitBtn = document.getElementById("submitBtn");
     const resultDiv = document.getElementById("result");
     const questionNav = document.getElementById("questionNav");
+    const progressDiv = document.getElementById("progress");
 
     function parseCSV(text) {
       const lines = text.trim().split('\n');
@@ -183,6 +185,7 @@
         };
         questionNav.appendChild(btn);
       });
+      updateProgress();
     }
 
     function updateNav() {
@@ -190,6 +193,12 @@
         btn.className = "w-10 h-10 rounded text-white font-bold text-sm " +
           (i === currentIndex ? "bg-blue-600" : (questions[i].userAnswer ? "bg-green-500" : "bg-gray-400"));
       });
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const answered = questions.filter(q => q.userAnswer).length;
+      progressDiv.textContent = `Terjawab: ${answered} / ${questions.length}`;
     }
 
     prevBtn.addEventListener("click", () => {
