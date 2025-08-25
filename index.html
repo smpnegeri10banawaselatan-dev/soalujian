@@ -3,192 +3,179 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Soal Mid Semester Kelas 7"</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 20px; background:#f2f2f2; }
-    h1 { text-align:center; margin-bottom:10px; }
-    #timer { text-align:center; font-weight:bold; margin-bottom:20px; }
-    .soal { background:#fff; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
-    .opsi { margin: 8px 0; }
-    button { background:#4CAF50; color:#fff; padding:12px 25px; border:none; border-radius:6px; font-size:16px; cursor:pointer; display:block; margin:30px auto 0; }
-    button:disabled { background:grey; cursor:not-allowed; }
-    .hasil { background:#fff; padding:20px; border-radius:8px; text-align:center; font-size:1.2rem; margin-top:30px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
-    .correct { color:green; font-weight:bold; }
-    .wrong { color:red; font-weight:bold; }
-  </style>
+  <title>Soal Mid Semester Kelas 7</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
 </head>
-<body>
+<body class="bg-gray-100 text-gray-900">
+  <div class="container py-5">
+    <h1 class="text-3xl text-center font-bold mb-4">Ujian Mid Semester - Kelas 7</h1>
+    <div id="timer" class="text-center text-lg font-semibold text-red-600 mb-4">Loading timer...</div>
 
-<h1>Soal Ujian Pilihan Ganda</h1>
-<div id="timer">Loading timer...</div>
+    <div id="quizContainer" class="bg-white p-4 rounded shadow">
+      <form id="quizForm" class="space-y-4"></form>
+      <div class="flex justify-between mt-6">
+        <button type="button" id="prevBtn" class="btn btn-secondary" disabled>Sebelumnya</button>
+        <button type="button" id="nextBtn" class="btn btn-primary">Selanjutnya</button>
+      </div>
+      <div class="text-center mt-5">
+        <button id="submitBtn" class="btn btn-success" style="display:none;">Kumpulkan Jawaban</button>
+      </div>
+    </div>
 
-<form id="quizForm"></form>
+    <div id="result" class="mt-5 p-4 bg-white rounded shadow text-center text-xl font-bold hidden"></div>
+  </div>
 
-<button id="submitBtn" disabled>Loading soal...</button>
+  <script>
+    const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
+    const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbwrSB7vTtkp6jAUS8fyv1IdXtTQPSmr2UbUYEojyrtqsax_aSrPNpgDspsuoWX3xsoY/exec";
 
-<div id="result" class="hasil" style="display:none;"></div>
+    let questions = [];
+    let currentIndex = 0;
+    let timeLeft = 10 * 60;
+    let isSubmitted = false;
+    const quizForm = document.getElementById("quizForm");
+    const timerDiv = document.getElementById("timer");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const submitBtn = document.getElementById("submitBtn");
+    const resultDiv = document.getElementById("result");
 
-<script>
-  // CSV soal dari Google Sheets
-  const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',');
+      const data = [];
 
-  // Ganti ini dengan URL Web App Google Apps Script kamu
-  const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbwrSB7vTtkp6jAUS8fyv1IdXtTQPSmr2UbUYEojyrtqsax_aSrPNpgDspsuoWX3xsoY/exec";
-
-  let questions = [];
-  const quizForm = document.getElementById('quizForm');
-  const resultDiv = document.getElementById('result');
-  const submitBtn = document.getElementById('submitBtn');
-  const timerDiv = document.getElementById('timer');
-
-  const totalTime = 10 * 60; // 10 menit (dalam detik)
-  let timeLeft = totalTime;
-  let timerInterval = null;
-  let isSubmitted = false;
-
-  function parseCSV(text) {
-    const lines = text.trim().split('\n');
-    const headers = lines[0].split(',');
-    const data = [];
-
-    for(let i=1; i<lines.length; i++){
-      const row = lines[i].split(',');
-      const obj = {};
-      headers.forEach((header, index) => {
-        obj[header.trim()] = row[index] ? row[index].trim() : "";
-      });
-      data.push(obj);
+      for(let i=1; i<lines.length; i++){
+        const row = lines[i].split(',');
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header.trim()] = row[index] ? row[index].trim() : "";
+        });
+        data.push(obj);
+      }
+      return data;
     }
-    return data;
-  }
 
-  function renderQuestions() {
-    quizForm.innerHTML = "";
-    questions.forEach((q, index) => {
-      const div = document.createElement('div');
-      div.className = 'soal';
-      div.innerHTML = `
-        <h3>${q.No}. ${q.Soal}</h3>
+    function renderQuestion(index) {
+      const q = questions[index];
+      quizForm.innerHTML = `
+        <div class="text-lg font-semibold mb-2">${q.No}. ${q.Soal}</div>
+        ${q.Gambar ? `<img src="${q.Gambar}" class="mb-3 max-w-full h-auto rounded border">` : ''}
         ${['A','B','C','D'].map(opt => `
-          <div class="opsi">
-            <label>
-              <input type="radio" name="q${index}" value="${opt}" />
-              ${opt}. ${q[opt]}
-            </label>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="q${index}" id="q${index}_${opt}" value="${opt}">
+            <label class="form-check-label" for="q${index}_${opt}">${opt}. ${q[opt]}</label>
           </div>
         `).join('')}
-        <div class="feedback" id="feedback${index}" style="margin-top: 8px;"></div>
       `;
-      quizForm.appendChild(div);
-    });
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Submit Jawaban";
-  }
 
-  function renderTimer() {
-    const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-    const seconds = (timeLeft % 60).toString().padStart(2, '0');
-    timerDiv.textContent = `Waktu tersisa: ${minutes}:${seconds}`;
-  }
+      // Restore selected answer if any
+      const selected = document.querySelector(`input[name="q${index}"][value="${q.userAnswer || ''}"]`);
+      if (selected) selected.checked = true;
 
-  function startTimer() {
-    renderTimer();
-    timerInterval = setInterval(() => {
-      if(timeLeft <= 0){
-        clearInterval(timerInterval);
-        if(!isSubmitted) checkAnswers();
-        return;
-      }
-      timeLeft--;
-      renderTimer();
-    }, 1000);
-  }
+      prevBtn.disabled = index === 0;
+      nextBtn.style.display = index === questions.length - 1 ? "none" : "inline-block";
+      submitBtn.style.display = index === questions.length - 1 ? "inline-block" : "none";
+    }
 
-  function sendResultToSheet(resultData) {
-    fetch(googleAppsScriptUrl, {
-      method: "POST",
-      body: JSON.stringify(resultData),
-      headers: { "Content-Type": "application/json" }
-    })
-    .then(res => res.json())
-    .then(data => {
-      if(data.result === "success"){
-        alert("Hasil berhasil disimpan ke Google Sheets!");
-      } else {
-        alert("Gagal menyimpan hasil: " + data.message);
-      }
-    })
-    .catch(err => {
-      alert("Error saat menyimpan hasil: " + err.message);
-    });
-  }
-
-  function checkAnswers() {
-    if(isSubmitted) return;
-    isSubmitted = true;
-
-    let score = 0;
-    let userAnswers = [];
-
-    questions.forEach((q, index) => {
+    function saveAnswer(index) {
       const selected = document.querySelector(`input[name="q${index}"]:checked`);
-      const feedbackEl = document.getElementById(`feedback${index}`);
+      questions[index].userAnswer = selected ? selected.value : null;
+    }
 
-      if(selected){
-        userAnswers.push(`${q.No}: ${selected.value}`);
-        if(selected.value === q.Jawaban){
-          score++;
-          feedbackEl.innerHTML = `<span class="correct">Benar!</span>`;
-        } else {
-          feedbackEl.innerHTML = `<span class="wrong">Salah! Jawaban benar: ${q.Jawaban}</span>`;
+    function renderTimer() {
+      const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+      const s = String(timeLeft % 60).padStart(2, '0');
+      timerDiv.textContent = `Waktu Tersisa: ${m}:${s}`;
+    }
+
+    function startTimer() {
+      renderTimer();
+      setInterval(() => {
+        if (timeLeft <= 0 && !isSubmitted) {
+          checkAnswers();
         }
-      } else {
-        userAnswers.push(`${q.No}: Tidak dijawab`);
-        feedbackEl.innerHTML = `<span class="wrong">Belum memilih jawaban!</span>`;
+        if (timeLeft > 0) {
+          timeLeft--;
+          renderTimer();
+        }
+      }, 1000);
+    }
+
+    function checkAnswers() {
+      isSubmitted = true;
+      let score = 0;
+      let jawabanUser = [];
+
+      questions.forEach((q, i) => {
+        const jawaban = q.userAnswer || "Tidak dijawab";
+        jawabanUser.push(`${q.No}: ${jawaban}`);
+        if (jawaban === q.Jawaban) score++;
+      });
+
+      const nama = prompt("Masukkan nama Anda:") || "Anonim";
+      resultDiv.innerHTML = `Skor Anda: ${score} dari ${questions.length}`;
+      resultDiv.classList.remove("hidden");
+
+      const resultData = {
+        nama,
+        jawaban: jawabanUser.join("; "),
+        skor: score,
+        waktu: 600 - timeLeft
+      };
+
+      fetch(googleAppsScriptUrl, {
+        method: "POST",
+        body: JSON.stringify(resultData),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.result !== "success") {
+          alert("Gagal menyimpan: " + data.message);
+        }
+      }).catch(err => {
+        alert("Error: " + err.message);
+      });
+    }
+
+    prevBtn.addEventListener("click", () => {
+      saveAnswer(currentIndex);
+      if (currentIndex > 0) {
+        currentIndex--;
+        renderQuestion(currentIndex);
       }
     });
 
-    submitBtn.disabled = true;
-    timerDiv.textContent = "Waktu habis atau soal telah disubmit.";
-
-    resultDiv.style.display = 'block';
-    resultDiv.textContent = `Skor Anda: ${score} dari ${questions.length}`;
-
-    let nama = prompt("Masukkan nama Anda:");
-    if(!nama) nama = "Anonim";
-
-    const resultData = {
-      nama: nama,
-      jawaban: userAnswers.join("; "),
-      skor: score,
-      waktu: totalTime - timeLeft
-    };
-
-    sendResultToSheet(resultData);
-  }
-
-  submitBtn.addEventListener('click', e => {
-    e.preventDefault();
-    checkAnswers();
-    window.scrollTo(0, document.body.scrollHeight);
-    clearInterval(timerInterval);
-  });
-
-  fetch(csvUrl)
-    .then(res => res.text())
-    .then(text => {
-      questions = parseCSV(text);
-      renderQuestions();
-      startTimer();
-    })
-    .catch(err => {
-      quizForm.innerHTML = "<p>Gagal memuat soal. Periksa koneksi atau akses Google Sheet.</p>";
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Gagal Memuat";
-      timerDiv.textContent = "";
-      console.error(err);
+    nextBtn.addEventListener("click", () => {
+      saveAnswer(currentIndex);
+      if (currentIndex < questions.length - 1) {
+        currentIndex++;
+        renderQuestion(currentIndex);
+      }
     });
-</script>
 
+    submitBtn.addEventListener("click", () => {
+      saveAnswer(currentIndex);
+      checkAnswers();
+    });
+
+    fetch(csvUrl)
+      .then(res => res.text())
+      .then(text => {
+        questions = parseCSV(text);
+        renderQuestion(0);
+        startTimer();
+      })
+      .catch(err => {
+        quizForm.innerHTML = "<p class='text-red-600'>Gagal memuat soal. Periksa koneksi atau izin file Google Sheets.</p>";
+        console.error(err);
+      });
+  </script>
 </body>
 </html>
