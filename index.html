@@ -12,7 +12,7 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <div class="container py-5">
+  <div class="container-fluid py-5">
     <!-- Logo -->
     <div class="text-center mb-4">
       <img src="https://donggala.go.id/asset/logo/donggala3.png" alt="Logo Sekolah" class="mx-auto h-20" />
@@ -21,29 +21,43 @@
     <h1 class="text-3xl text-center font-bold mb-4">Ujian Mid Semester - Kelas 7</h1>
     <div id="timer" class="text-center text-lg font-semibold text-red-600 mb-4">Loading timer...</div>
 
-    <div id="quizContainer" class="bg-white p-4 rounded shadow">
-      <form id="quizForm" class="space-y-4"></form>
+    <div class="row">
+      <!-- Kolom Soal -->
+      <div class="col-md-9">
+        <div id="quizContainer" class="bg-white p-4 rounded shadow">
+          <form id="quizForm" class="space-y-4"></form>
 
-      <div class="flex justify-between mt-6">
-        <button type="button" id="prevBtn" class="btn btn-secondary" disabled>Sebelumnya</button>
-        <button type="button" id="nextBtn" class="btn btn-primary">Selanjutnya</button>
+          <div class="flex justify-between mt-6">
+            <button type="button" id="prevBtn" class="btn btn-secondary" disabled>Sebelumnya</button>
+            <button type="button" id="nextBtn" class="btn btn-primary">Selanjutnya</button>
+          </div>
+
+          <div class="text-center mt-5">
+            <button id="submitBtn" class="btn btn-success" style="display:none;">Kumpulkan Jawaban</button>
+          </div>
+        </div>
+
+        <div id="result" class="mt-5 p-4 bg-white rounded shadow text-center text-xl font-bold hidden"></div>
       </div>
 
-      <div class="text-center mt-5">
-        <button id="submitBtn" class="btn btn-success" style="display:none;">Kumpulkan Jawaban</button>
+      <!-- Kolom Nomor Soal -->
+      <div class="col-md-3">
+        <div class="bg-white p-3 rounded shadow">
+          <h2 class="text-lg font-semibold mb-3 text-center">Nomor Soal</h2>
+          <div id="questionNav" class="grid grid-cols-5 gap-2"></div>
+          <p class="text-sm text-gray-500 mt-3 text-center">Klik nomor untuk lompat ke soal</p>
+        </div>
       </div>
     </div>
-
-    <div id="result" class="mt-5 p-4 bg-white rounded shadow text-center text-xl font-bold hidden"></div>
   </div>
 
   <script>
     const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
-    const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbxMSLu6oH7I4HRCRA-Cv43LeD0pDufgoDG83e9O56GJlaehK9oPqOM5ZzUozO6RMUE/exec"; // 🔴 ganti dengan URL web app Anda
+    const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbxMSLu6oH7I4HRCRA-Cv43LeD0pDufgoDG83e9O56GJlaehK9oPqOM5ZzUozO6RMUE/exec";
 
     let questions = [];
     let currentIndex = 0;
-    let timeLeft = 90 * 60; // ✅ 90 menit
+    let timeLeft = 90 * 60; 
     let isSubmitted = false;
     const quizForm = document.getElementById("quizForm");
     const timerDiv = document.getElementById("timer");
@@ -51,6 +65,7 @@
     const nextBtn = document.getElementById("nextBtn");
     const submitBtn = document.getElementById("submitBtn");
     const resultDiv = document.getElementById("result");
+    const questionNav = document.getElementById("questionNav");
 
     function parseCSV(text) {
       const lines = text.trim().split('\n');
@@ -87,11 +102,14 @@
       prevBtn.disabled = index === 0;
       nextBtn.style.display = index === questions.length - 1 ? "none" : "inline-block";
       submitBtn.style.display = index === questions.length - 1 ? "inline-block" : "none";
+
+      updateNav();
     }
 
     function saveAnswer(index) {
       const selected = document.querySelector(`input[name="q${index}"]:checked`);
       questions[index].userAnswer = selected ? selected.value : null;
+      updateNav();
     }
 
     function renderTimer() {
@@ -150,6 +168,30 @@
       });
     }
 
+    function buildNav() {
+      questionNav.innerHTML = "";
+      questions.forEach((q, i) => {
+        const btn = document.createElement("button");
+        btn.textContent = q.No;
+        btn.className = "w-10 h-10 rounded text-white font-bold text-sm " +
+          "transition-colors duration-200 " +
+          (i === currentIndex ? "bg-blue-600" : (q.userAnswer ? "bg-green-500" : "bg-gray-400"));
+        btn.onclick = () => {
+          saveAnswer(currentIndex);
+          currentIndex = i;
+          renderQuestion(currentIndex);
+        };
+        questionNav.appendChild(btn);
+      });
+    }
+
+    function updateNav() {
+      [...questionNav.children].forEach((btn, i) => {
+        btn.className = "w-10 h-10 rounded text-white font-bold text-sm " +
+          (i === currentIndex ? "bg-blue-600" : (questions[i].userAnswer ? "bg-green-500" : "bg-gray-400"));
+      });
+    }
+
     prevBtn.addEventListener("click", () => {
       saveAnswer(currentIndex);
       if (currentIndex > 0) {
@@ -175,6 +217,7 @@
       .then(res => res.text())
       .then(text => {
         questions = parseCSV(text);
+        buildNav();
         renderQuestion(0);
         startTimer();
       })
