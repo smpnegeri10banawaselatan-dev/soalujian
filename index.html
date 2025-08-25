@@ -11,14 +11,12 @@
 
 <div class="container py-5">
 
-  <!-- Logo -->
   <div class="text-center mb-4">
     <img src="https://donggala.go.id/asset/logo/donggala3.png" alt="Logo Sekolah" class="mx-auto h-20" />
   </div>
 
   <h1 class="text-3xl text-center font-bold mb-4">Ujian Mid Semester - Kelas 7</h1>
 
-  <!-- Login Siswa -->
   <div id="loginDiv" class="bg-white p-4 rounded shadow max-w-md mx-auto">
     <h2 class="text-xl font-semibold mb-3">Pilih Nama Siswa</h2>
     <select id="siswaSelect" class="form-select mb-3">
@@ -28,10 +26,8 @@
     <button id="startBtn" class="btn btn-primary" disabled>Mulai Ujian</button>
   </div>
 
-  <!-- Timer -->
   <div id="timer" class="text-center text-lg font-semibold text-red-600 my-4 hidden">Loading timer...</div>
 
-  <!-- Quiz -->
   <div class="row hidden" id="quizSection">
     <div class="col-md-9">
       <div id="quizContainer" class="bg-white p-4 rounded shadow">
@@ -62,8 +58,9 @@
 </div>
 
 <script>
-const siswaUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/pubhtml?gid=1939472161&single=true";
-const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/pub?gid=2115488935&single=true&output=csv";
+// Perubahan pada URL
+const siswaUrl = "https://docs.google.com/spreadsheets/d/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/export?format=csv&gid=1939472161";
+const csvUrl = "https://docs.google.com/spreadsheets/d/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/export?format=csv&gid=0";
 const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbyktqkKQiEuEYT-fIvsaXAnnSdfqNimnWR143WyqDyZaBYMU-J0Y8ZT59TuloRHrck/exec"; // ganti dengan URL Web App
 
 let siswaData = [];
