@@ -39,11 +39,11 @@
 
   <script>
     const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
-    const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbwwhnpbqNMO-94Fv2DjWkcHr8OrEC02-8Zfi9Lw8VpvwB6-9WwBEK2JhRV59eQ7h9P4/exec";
+    const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbwHXQU2Of-GExTf2tcN7VCwj5TbbGXRWknVKBXOOpcX13rsMuMuFNMHvERVclZGyN5Y/exec"; // 🔴 ganti dengan URL web app Anda
 
     let questions = [];
     let currentIndex = 0;
-    let timeLeft = 10 * 60;
+    let timeLeft = 90 * 60; // ✅ 90 menit
     let isSubmitted = false;
     const quizForm = document.getElementById("quizForm");
     const timerDiv = document.getElementById("timer");
@@ -132,7 +132,7 @@
         nama,
         jawaban: jawabanUser.join("; "),
         skor: score,
-        waktu: 600 - timeLeft
+        waktu: (90*60) - timeLeft
       };
 
       fetch(googleAppsScriptUrl, {
