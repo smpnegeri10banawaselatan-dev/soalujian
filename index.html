@@ -49,7 +49,6 @@
       </div>
       <div id="result" class="mt-5 p-4 bg-white rounded shadow text-center text-xl font-bold hidden"></div>
 
-      <!-- Grafik progres -->
       <div id="chartContainer" class="mt-5 bg-white p-4 rounded shadow hidden">
         <h2 class="text-lg font-semibold mb-3 text-center">Grafik Progres Kelas</h2>
         <canvas id="scoreChart"></canvas>
@@ -68,9 +67,9 @@
 </div>
 
 <script>
-const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/pub?gid=0&single=true&output=csv"; // soal
-const siswaUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/pub?gid=1939472161&single=true&output=csv"; // data siswa
-const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbzTFtdvgiQMf28Um7XozoxZLGr6elGzprf5TBmOKAUoxOOnfCd9NQsBebnL_jc1xOaO/exec";
+const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/pubhtml?gid=0&single=true"; // Ganti URL soal
+const siswaUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBmQ-qLgHUNJK2Ex42wOMNdFcOXimLe5XjbGIR7s0Tkwcz9o0Y8KJorWv7XXMprivlQpoubO_TsPNR/pub?gid=1939472161&single=true&output=csv"; // Ganti URL siswa
+const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycby6j3v0vnRhj207W1SixASjTc1-ZYF1-h5dVqrqNxDuWCkrsrY6vgK47qXYdkOQxDwj/exec"; // Ganti Web App URL
 
 let questions=[], currentIndex=0, timeLeft=90*60, isSubmitted=false;
 let currentSiswa={};
@@ -147,8 +146,154 @@ function parseCSV(text){
   return data;
 }
 
-// Render Question, Nav, Timer sama seperti sebelumnya (saya bisa lengkapi jika mau)
+// Render soal
+function renderQuestion(index){
+  const q=questions[index];
+  quizForm.innerHTML=`
+    <div class="text-lg font-semibold mb-2">${q.No}. ${q.Soal}</div>
+    ${q.Gambar?`<img src="${q.Gambar}" class="mb-3 max-w-full h-auto rounded border">`:''}
+    ${['A','B','C','D'].map(opt=>`
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="q${index}" id="q${index}_${opt}" value="${opt}">
+        <label class="form-check-label" for="q${index}_${opt}">${opt}. ${q[opt]}</label>
+      </div>
+    `).join('')}
+  `;
+  const selected=document.querySelector(`input[name="q${index}"][value="${q.userAnswer||''}"]`);
+  if(selected) selected.checked=true;
+  prevBtn.disabled=index===0;
+  nextBtn.style.display=index===questions.length-1?"none":"inline-block";
+  submitBtn.style.display=index===questions.length-1?"inline-block":"none";
+  updateNav();
+}
 
+function saveAnswer(index){
+  const selected=document.querySelector(`input[name="q${index}"]:checked`);
+  questions[index].userAnswer=selected?selected.value:null;
+  updateNav();
+}
+
+// Navigasi soal
+function buildNav(){
+  questionNav.innerHTML="";
+  questions.forEach((q,i)=>{
+    const btn=document.createElement("button");
+    btn.textContent=q.No;
+    btn.className="w-10 h-10 rounded text-white font-bold text-sm "+
+      (i===currentIndex?"bg-blue-600":q.userAnswer?"bg-green-500":"bg-gray-400");
+    btn.onclick=()=>{
+      saveAnswer(currentIndex);
+      currentIndex=i;
+      renderQuestion(currentIndex);
+    };
+    questionNav.appendChild(btn);
+  });
+  updateProgress();
+}
+
+function updateNav(){
+  [...questionNav.children].forEach((btn,i)=>{
+    btn.className="w-10 h-10 rounded text-white font-bold text-sm "+
+      (i===currentIndex?"bg-blue-600":questions[i].userAnswer?"bg-green-500":"bg-gray-400");
+  });
+  updateProgress();
+}
+
+function updateProgress(){
+  const answered=questions.filter(q=>q.userAnswer).length;
+  progressDiv.textContent=`Terjawab: ${answered} / ${questions.length}`;
+}
+
+// Timer
+function renderTimer(){
+  const m=String(Math.floor(timeLeft/60)).padStart(2,'0');
+  const s=String(timeLeft%60).padStart(2,'0');
+  timerDiv.textContent=`Waktu Tersisa: ${m}:${s}`;
+}
+
+function startTimer(){
+  renderTimer();
+  setInterval(()=>{
+    if(timeLeft<=0 && !isSubmitted) checkAnswers();
+    if(timeLeft>0){timeLeft--; renderTimer();}
+  },1000);
+}
+
+// Submit jawaban
+submitBtn.addEventListener("click",()=>{
+  saveAnswer(currentIndex);
+  checkAnswers();
+});
+
+prevBtn.addEventListener("click",()=>{
+  saveAnswer(currentIndex);
+  if(currentIndex>0){currentIndex--; renderQuestion(currentIndex);}
+});
+
+nextBtn.addEventListener("click",()=>{
+  saveAnswer(currentIndex);
+  if(currentIndex<questions.length-1){currentIndex++; renderQuestion(currentIndex);}
+});
+
+function checkAnswers(){
+  isSubmitted=true;
+  let score=0;
+  let jawabanUser=[];
+  questions.forEach((q,i)=>{
+    const jawaban=q.userAnswer||"Tidak dijawab";
+    jawabanUser.push(`${q.No}: ${jawaban}`);
+    if(jawaban===q.Jawaban) score++;
+  });
+
+  resultDiv.innerHTML=`Skor Anda: ${score} dari ${questions.length}`;
+  resultDiv.classList.remove("hidden");
+
+  const resultData={
+    nama:currentSiswa.nama,
+    kelas:currentSiswa.kelas,
+    jk:currentSiswa.jk,
+    nisn:currentSiswa.nisn,
+    tempat:currentSiswa.tempat,
+    tgl:currentSiswa.tgl,
+    jawaban:jawabanUser.join("; "),
+    skor:score,
+    waktu:(90*60)-timeLeft
+  };
+
+  fetch(googleAppsScriptUrl,{
+    method:"POST",
+    body:JSON.stringify(resultData),
+    headers:{"Content-Type":"application/json"}
+  }).then(res=>res.json())
+    .then(data=>{
+      if(data.result!=="success") alert("Gagal menyimpan: "+data.message);
+      else loadChart();
+    }).catch(err=>{
+      alert("Error: "+err.message);
+    });
+}
+
+// Grafik progres
+function loadChart(){
+  fetch(googleAppsScriptUrl+"?action=rekap")
+    .then(res=>res.json())
+    .then(data=>{
+      chartContainer.classList.remove("hidden");
+      const ctx=document.getElementById("scoreChart").getContext("2d");
+      new Chart(ctx,{
+        type:'bar',
+        data:{
+          labels:data.map(d=>d.nama),
+          datasets:[{
+            label:'Skor',
+            data:data.map(d=>d.skor),
+            backgroundColor:'rgba(54,162,235,0.6)'
+          }]
+        },
+        options:{responsive:true, scales:{y:{beginAtZero:true}}}
+      });
+    });
+}
 </script>
 </body>
 </html>
