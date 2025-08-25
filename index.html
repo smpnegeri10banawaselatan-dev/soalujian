@@ -18,7 +18,7 @@
 
   <h1 class="text-3xl text-center font-bold mb-4">Ujian Mid Semester - Kelas 7</h1>
 
-  <!-- Login siswa -->
+  <!-- Login Siswa -->
   <div id="loginDiv" class="bg-white p-4 rounded shadow max-w-md mx-auto">
     <h2 class="text-xl font-semibold mb-3">Pilih Nama Siswa</h2>
     <select id="siswaSelect" class="form-select mb-3">
@@ -64,7 +64,7 @@
 <script>
 const siswaUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=1939472161";
 const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
-const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbwWe292a_r5wkVsZGI73bNzKB3wMKqVhs_xionngwD41V0y5z8scDFBd8r_LtarfVAN/exec"; // Ganti dengan URL Web App
+const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbxCVDz728_lCj5I9QTCejhjQXjula2gA39Fd882W9f9jCXeHRO9dSd6aUZ4wrHZtOus/exec"; // ganti dengan URL Web App
 
 let siswaData = [];
 let questions = [];
@@ -88,7 +88,7 @@ const questionNav = document.getElementById("questionNav");
 const progressDiv = document.getElementById("progress");
 
 // Ambil data siswa
-fetch(siswaUrl).then(res => res.text()).then(text=>{
+fetch(siswaUrl).then(res=>res.text()).then(text=>{
   const lines = text.trim().split("\n");
   for(let i=1;i<lines.length;i++){
     const row = lines[i].split(",");
