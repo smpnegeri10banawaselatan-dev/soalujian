@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soal Ujian Interaktif dari Google Sheets</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .soal {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .opsi {
+      margin: 8px 0;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      display: block;
+      margin: 30px auto 0;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    .hasil {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 1.2rem;
+      margin-top: 30px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .correct {
+      color: green;
+      font-weight: bold;
+    }
+    .wrong {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Soal Ujian Pilihan Ganda</h1>
+
+  <form id="quizForm"></form>
+
+  <button id="submitBtn" disabled>Loading soal...</button>
+
+  <div id="result" class="hasil" style="display:none;"></div>
+
+  <script>
+    const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
+
+    let questions = [];
+
+    const quizForm = document.getElementById('quizForm');
+    const resultDiv = document.getElementById('result');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Fungsi sederhana untuk parsing CSV ke array object
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',');
+      const data = [];
+
+      for(let i=1; i<lines.length; i++){
+        const row = lines[i].split(',');
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header.trim()] = row[index] ? row[index].trim() : "";
+        });
+        data.push(obj);
+      }
+      return data;
+    }
+
+    function renderQuestions() {
+      quizForm.innerHTML = "";
+      questions.forEach((q, index) => {
+        const div = document.createElement('div');
+        div.className = 'soal';
+        div.innerHTML = `
+          <h3>${q.No}. ${q.Soal}</h3>
+          ${['A','B','C','D'].map(opt => `
+            <div class="opsi">
+              <label>
+                <input type="radio" name="q${index}" value="${opt}" />
+                ${opt}. ${q[opt]}
+              </label>
+            </div>
+          `).join('')}
+          <div class="feedback" id="feedback${index}" style="margin-top: 8px;"></div>
+        `;
+        quizForm.appendChild(div);
+      });
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Jawaban";
+    }
+
+    function checkAnswers() {
+      let score = 0;
+      questions.forEach((q, index) => {
+        const selected = document.querySelector(`input[name="q${index}"]:checked`);
+        const feedbackEl = document.getElementById(`feedback${index}`);
+
+        if (selected) {
+          if (selected.value === q.Jawaban) {
+            score++;
+            feedbackEl.innerHTML = `<span class="correct">Benar!</span>`;
+          } else {
+            feedbackEl.innerHTML = `<span class="wrong">Salah! Jawaban benar: ${q.Jawaban}</span>`;
+          }
+        } else {
+          feedbackEl.innerHTML = `<span class="wrong">Belum memilih jawaban!</span>`;
+        }
+      });
+
+      resultDiv.style.display = 'block';
+      resultDiv.textContent = `Skor Anda: ${score} dari ${questions.length}`;
+    }
+
+    submitBtn.addEventListener('click', e => {
+      e.preventDefault();
+      checkAnswers();
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    // Ambil CSV dari Google Sheets dan parse
+    fetch(csvUrl)
+      .then(response => response.text())
+      .then(text => {
+        questions = parseCSV(text);
+        renderQuestions();
+      })
+      .catch(err => {
+        quizForm.innerHTML = "<p>Gagal memuat soal. Periksa koneksi atau akses Google Sheet.</p>";
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Gagal Memuat";
+        console.error(err);
+      });
+
+  </script>
+
+</body>
+</html>
