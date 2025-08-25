@@ -270,16 +270,29 @@ function checkAnswers(){
     waktu: (90*60)-timeLeft
   };
 
-  fetch(googleAppsScriptUrl,{
-    method:"POST",
-    body: JSON.stringify(resultData),
-    headers: {"Content-Type":"application/json"}
-  }).then(res=>res.json())
-    .then(data=>{
-      if(data.result!=="success") alert("Gagal menyimpan: "+data.message);
-    }).catch(err=>{
-      alert("Error: "+err.message);
-    });
+ fetch(googleAppsScriptUrl, {
+  method: "POST",
+  body: JSON.stringify(resultData),
+  headers: { "Content-Type": "application/json" }
+})
+.then(res => {
+  if (!res.ok) {
+    throw new Error(`Server mengembalikan status ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+})
+.then(data => {
+  if (data.result !== "success") {
+    alert("⚠️ Gagal menyimpan ke server: " + (data.message || "Tidak diketahui"));
+  } else {
+    alert("✅ Jawaban berhasil disimpan!");
+  }
+})
+.catch(err => {
+  console.error("Fetch error:", err);
+  alert("❌ Tidak dapat menghubungi server.\nPeriksa koneksi internet dan URL Web App.\n\nDetail: " + err.message);
+});
+
 }
 
 prevBtn.addEventListener("click", ()=>{saveAnswer(currentIndex); if(currentIndex>0){currentIndex--; renderQuestion(currentIndex);}});
