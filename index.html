@@ -12,13 +12,35 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <div class="container-fluid py-5">
-    <!-- Logo -->
-    <div class="text-center mb-4">
-      <img src="https://donggala.go.id/asset/logo/donggala3.png" alt="Logo Sekolah" class="mx-auto h-20" />
+<div class="container-fluid py-5">
+  <!-- Logo -->
+  <div class="text-center mb-4">
+    <img src="https://donggala.go.id/asset/logo/donggala3.png" alt="Logo Sekolah" class="mx-auto h-20" />
+  </div>
+
+  <h1 class="text-3xl text-center font-bold mb-4">Ujian Mid Semester - Kelas 7</h1>
+
+  <!-- Login Section -->
+  <div id="loginSection" class="bg-white p-5 rounded shadow max-w-lg mx-auto">
+    <h2 class="text-xl font-bold mb-3 text-center">Login Siswa</h2>
+    <label class="block mb-2 font-semibold">Pilih Nama Siswa:</label>
+    <select id="namaSelect" class="form-select mb-3">
+      <option value="">-- Pilih Nama --</option>
+    </select>
+
+    <div id="biodata" class="hidden mb-4 p-3 border rounded bg-gray-50">
+      <p><strong>Kelas:</strong> <span id="kelas"></span></p>
+      <p><strong>JK:</strong> <span id="jk"></span></p>
+      <p><strong>NISN:</strong> <span id="nisn"></span></p>
+      <p><strong>Tempat Lahir:</strong> <span id="tempat"></span></p>
+      <p><strong>Tanggal Lahir:</strong> <span id="tgl"></span></p>
     </div>
 
-    <h1 class="text-3xl text-center font-bold mb-4">Ujian Mid Semester - Kelas 7</h1>
+    <button id="startBtn" class="btn btn-primary w-full hidden">Mulai Ujian</button>
+  </div>
+
+  <!-- Quiz Section -->
+  <div id="quizSection" class="hidden mt-5">
     <div id="timer" class="text-center text-lg font-semibold text-red-600 mb-4">Loading timer...</div>
 
     <div class="row">
@@ -51,190 +73,195 @@
       </div>
     </div>
   </div>
+</div>
 
-  <script>
-    const csvUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
-    const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbxMSLu6oH7I4HRCRA-Cv43LeD0pDufgoDG83e9O56GJlaehK9oPqOM5ZzUozO6RMUE/exec";
+<script>
+  // URL DATA
+  const soalUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=0";
+  const siswaUrl = "https://docs.google.com/spreadsheets/d/1RDTnOICKl6wKqBryd7BEO4FlXV0td7rfLm7-pZj8Yls/export?format=csv&gid=1939472161";
+  const googleAppsScriptUrl = "https://script.google.com/macros/s/AKfycbxMSLu6oH7I4HRCRA-Cv43LeD0pDufgoDG83e9O56GJlaehK9oPqOM5ZzUozO6RMUE/exec";
 
-    let questions = [];
-    let currentIndex = 0;
-    let timeLeft = 90 * 60; 
-    let isSubmitted = false;
-    const quizForm = document.getElementById("quizForm");
-    const timerDiv = document.getElementById("timer");
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    const submitBtn = document.getElementById("submitBtn");
-    const resultDiv = document.getElementById("result");
-    const questionNav = document.getElementById("questionNav");
-    const progressDiv = document.getElementById("progress");
+  let questions = [], currentIndex = 0, timeLeft = 90*60, isSubmitted = false;
+  let siswaData = [], currentSiswa = null;
 
-    function parseCSV(text) {
-      const lines = text.trim().split('\n');
-      const headers = lines[0].split(',');
-      const data = [];
+  const quizForm = document.getElementById("quizForm");
+  const timerDiv = document.getElementById("timer");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const submitBtn = document.getElementById("submitBtn");
+  const resultDiv = document.getElementById("result");
+  const questionNav = document.getElementById("questionNav");
+  const progressDiv = document.getElementById("progress");
 
-      for(let i=1; i<lines.length; i++){
-        const row = lines[i].split(',');
-        const obj = {};
-        headers.forEach((header, index) => {
-          obj[header.trim()] = row[index] ? row[index].trim() : "";
-        });
-        data.push(obj);
-      }
-      return data;
+  // CSV Parser
+  function parseCSV(text){
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',');
+    const data = [];
+    for(let i=1;i<lines.length;i++){
+      const row = lines[i].split(',');
+      const obj = {};
+      headers.forEach((header,index)=>obj[header.trim()]=row[index]?row[index].trim():"");
+      data.push(obj);
     }
+    return data;
+  }
 
-    function renderQuestion(index) {
-      const q = questions[index];
-      quizForm.innerHTML = `
-        <div class="text-lg font-semibold mb-2">${q.No}. ${q.Soal}</div>
-        ${q.Gambar ? `<img src="${q.Gambar}" class="mb-3 max-w-full h-auto rounded border">` : ''}
-        ${['A','B','C','D'].map(opt => `
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="q${index}" id="q${index}_${opt}" value="${opt}">
-            <label class="form-check-label" for="q${index}_${opt}">${opt}. ${q[opt]}</label>
-          </div>
-        `).join('')}
-      `;
-
-      const selected = document.querySelector(`input[name="q${index}"][value="${q.userAnswer || ''}"]`);
-      if (selected) selected.checked = true;
-
-      prevBtn.disabled = index === 0;
-      nextBtn.style.display = index === questions.length - 1 ? "none" : "inline-block";
-      submitBtn.style.display = index === questions.length - 1 ? "inline-block" : "none";
-
-      updateNav();
-    }
-
-    function saveAnswer(index) {
-      const selected = document.querySelector(`input[name="q${index}"]:checked`);
-      questions[index].userAnswer = selected ? selected.value : null;
-      updateNav();
-    }
-
-    function renderTimer() {
-      const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
-      const s = String(timeLeft % 60).padStart(2, '0');
-      timerDiv.textContent = `Waktu Tersisa: ${m}:${s}`;
-    }
-
-    function startTimer() {
-      renderTimer();
-      setInterval(() => {
-        if (timeLeft <= 0 && !isSubmitted) {
-          checkAnswers();
-        }
-        if (timeLeft > 0) {
-          timeLeft--;
-          renderTimer();
-        }
-      }, 1000);
-    }
-
-    function checkAnswers() {
-      isSubmitted = true;
-      let score = 0;
-      let jawabanUser = [];
-
-      questions.forEach((q, i) => {
-        const jawaban = q.userAnswer || "Tidak dijawab";
-        jawabanUser.push(`${q.No}: ${jawaban}`);
-        if (jawaban === q.Jawaban) score++;
+  // === LOGIN SISWA ===
+  fetch(siswaUrl)
+    .then(res=>res.text())
+    .then(text=>{
+      siswaData=parseCSV(text);
+      const namaSelect=document.getElementById("namaSelect");
+      siswaData.forEach(s=>{
+        const opt=document.createElement("option");
+        opt.value=s["Nama"];
+        opt.textContent=s["Nama"];
+        namaSelect.appendChild(opt);
       });
 
-      const nama = prompt("Masukkan nama Anda:") || "Anonim";
-      resultDiv.innerHTML = `Skor Anda: ${score} dari ${questions.length}`;
-      resultDiv.classList.remove("hidden");
+      namaSelect.onchange=()=>{
+        const nama = namaSelect.value.trim();
+        currentSiswa = siswaData.find(s => s["Nama"].trim() === nama);
 
-      const resultData = {
-        nama,
-        jawaban: jawabanUser.join("; "),
-        skor: score,
-        waktu: (90*60) - timeLeft
+        if(currentSiswa){
+          document.getElementById("biodata").classList.remove("hidden");
+          document.getElementById("kelas").textContent=currentSiswa["KELAS"];
+          document.getElementById("jk").textContent=currentSiswa["JK"];
+          document.getElementById("nisn").textContent=currentSiswa["NISN"];
+          document.getElementById("tempat").textContent=currentSiswa["Tempat Lahir"];
+          document.getElementById("tgl").textContent=currentSiswa["Tanggal Lahir"];
+          document.getElementById("startBtn").classList.remove("hidden");
+        }else{
+          alert("Nama siswa tidak terdaftar! Silakan pilih nama yang benar.");
+          document.getElementById("biodata").classList.add("hidden");
+          document.getElementById("startBtn").classList.add("hidden");
+          currentSiswa=null;
+        }
       };
-
-      fetch(googleAppsScriptUrl, {
-        method: "POST",
-        body: JSON.stringify(resultData),
-        headers: { "Content-Type": "application/json" }
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.result !== "success") {
-          alert("Gagal menyimpan: " + data.message);
-        }
-      }).catch(err => {
-        alert("Error: " + err.message);
-      });
-    }
-
-    function buildNav() {
-      questionNav.innerHTML = "";
-      questions.forEach((q, i) => {
-        const btn = document.createElement("button");
-        btn.textContent = q.No;
-        btn.className = "w-10 h-10 rounded text-white font-bold text-sm " +
-          "transition-colors duration-200 " +
-          (i === currentIndex ? "bg-blue-600" : (q.userAnswer ? "bg-green-500" : "bg-gray-400"));
-        btn.onclick = () => {
-          saveAnswer(currentIndex);
-          currentIndex = i;
-          renderQuestion(currentIndex);
-        };
-        questionNav.appendChild(btn);
-      });
-      updateProgress();
-    }
-
-    function updateNav() {
-      [...questionNav.children].forEach((btn, i) => {
-        btn.className = "w-10 h-10 rounded text-white font-bold text-sm " +
-          (i === currentIndex ? "bg-blue-600" : (questions[i].userAnswer ? "bg-green-500" : "bg-gray-400"));
-      });
-      updateProgress();
-    }
-
-    function updateProgress() {
-      const answered = questions.filter(q => q.userAnswer).length;
-      progressDiv.textContent = `Terjawab: ${answered} / ${questions.length}`;
-    }
-
-    prevBtn.addEventListener("click", () => {
-      saveAnswer(currentIndex);
-      if (currentIndex > 0) {
-        currentIndex--;
-        renderQuestion(currentIndex);
-      }
     });
 
-    nextBtn.addEventListener("click", () => {
-      saveAnswer(currentIndex);
-      if (currentIndex < questions.length - 1) {
-        currentIndex++;
-        renderQuestion(currentIndex);
-      }
-    });
+  document.getElementById("startBtn").onclick=()=>{
+    if(!currentSiswa) return alert("Nama siswa tidak valid!");
+    document.getElementById("loginSection").classList.add("hidden");
+    document.getElementById("quizSection").classList.remove("hidden");
 
-    submitBtn.addEventListener("click", () => {
-      saveAnswer(currentIndex);
-      checkAnswers();
-    });
-
-    fetch(csvUrl)
-      .then(res => res.text())
-      .then(text => {
-        questions = parseCSV(text);
+    fetch(soalUrl)
+      .then(res=>res.text())
+      .then(text=>{
+        questions=parseCSV(text);
         buildNav();
         renderQuestion(0);
         startTimer();
-      })
-      .catch(err => {
-        quizForm.innerHTML = "<p class='text-red-600'>Gagal memuat soal. Periksa koneksi atau izin file Google Sheets.</p>";
+      }).catch(err=>{
+        quizForm.innerHTML="<p class='text-red-600'>Gagal memuat soal.</p>";
         console.error(err);
       });
-  </script>
+  };
+
+  // === QUIZ FUNCTIONS ===
+  function renderQuestion(index){
+    const q=questions[index];
+    quizForm.innerHTML=`
+      <div class="text-lg font-semibold mb-2">${q.No}. ${q.Soal}</div>
+      ${q.Gambar?`<img src="${q.Gambar}" class="mb-3 max-w-full h-auto rounded border">`:''}
+      ${['A','B','C','D'].map(opt=>`
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="q${index}" id="q${index}_${opt}" value="${opt}">
+          <label class="form-check-label" for="q${index}_${opt}">${opt}. ${q[opt]}</label>
+        </div>`).join('')}
+    `;
+    const selected=document.querySelector(`input[name="q${index}"][value="${q.userAnswer||''}"]`);
+    if(selected) selected.checked=true;
+
+    prevBtn.disabled=index===0;
+    nextBtn.style.display=index===questions.length-1?"none":"inline-block";
+    submitBtn.style.display=index===questions.length-1?"inline-block":"none";
+    updateNav();
+  }
+
+  function saveAnswer(index){
+    const selected=document.querySelector(`input[name="q${index}"]:checked`);
+    questions[index].userAnswer=selected?selected.value:null;
+    updateNav();
+  }
+
+  function renderTimer(){
+    const m=String(Math.floor(timeLeft/60)).padStart(2,'0');
+    const s=String(timeLeft%60).padStart(2,'0');
+    timerDiv.textContent=`Waktu Tersisa: ${m}:${s}`;
+  }
+
+  function startTimer(){
+    renderTimer();
+    setInterval(()=>{
+      if(timeLeft<=0&&!isSubmitted) checkAnswers();
+      if(timeLeft>0){timeLeft--; renderTimer();}
+    },1000);
+  }
+
+  function checkAnswers(){
+    isSubmitted=true;
+    let score=0,jawabanUser=[];
+    questions.forEach(q=>{
+      const jawaban=q.userAnswer||"Tidak dijawab";
+      jawabanUser.push(`${q.No}: ${jawaban}`);
+      if(jawaban===q.Jawaban) score++;
+    });
+
+    resultDiv.innerHTML=`Skor Anda: ${score} dari ${questions.length}`;
+    resultDiv.classList.remove("hidden");
+
+    const resultData={
+      nama: currentSiswa["Nama"],
+      kelas: currentSiswa["KELAS"],
+      jk: currentSiswa["JK"],
+      nisn: currentSiswa["NISN"],
+      tempat: currentSiswa["Tempat Lahir"],
+      tgl: currentSiswa["Tanggal Lahir"],
+      jawaban: jawabanUser.join("; "),
+      skor: score,
+      waktu: (90*60)-timeLeft
+    };
+
+    fetch(googleAppsScriptUrl,{
+      method:"POST",
+      body:JSON.stringify(resultData),
+      headers:{"Content-Type":"application/json"}
+    }).then(res=>res.json())
+      .then(data=>{
+        if(data.result!=="success") alert("Gagal menyimpan: "+data.message);
+      }).catch(err=>alert("Error: "+err.message));
+  }
+
+  function buildNav(){
+    questionNav.innerHTML="";
+    questions.forEach((q,i)=>{
+      const btn=document.createElement("button");
+      btn.textContent=q.No;
+      btn.className="w-10 h-10 rounded text-white font-bold text-sm "+(i===currentIndex?"bg-blue-600":(q.userAnswer?"bg-green-500":"bg-gray-400"));
+      btn.onclick=()=>{saveAnswer(currentIndex); currentIndex=i; renderQuestion(currentIndex);}
+      questionNav.appendChild(btn);
+    });
+    updateProgress();
+  }
+
+  function updateNav(){
+    [...questionNav.children].forEach((btn,i)=>{
+      btn.className="w-10 h-10 rounded text-white font-bold text-sm "+(i===currentIndex?"bg-blue-600":(questions[i].userAnswer?"bg-green-500":"bg-gray-400"));
+    });
+    updateProgress();
+  }
+
+  function updateProgress(){
+    const answered=questions.filter(q=>q.userAnswer).length;
+    progressDiv.textContent=`Terjawab: ${answered} / ${questions.length}`;
+  }
+
+  prevBtn.addEventListener("click",()=>{saveAnswer(currentIndex); if(currentIndex>0){currentIndex--; renderQuestion(currentIndex);}});
+  nextBtn.addEventListener("click",()=>{saveAnswer(currentIndex); if(currentIndex<questions.length-1){currentIndex++; renderQuestion(currentIndex);}});
+  submitBtn.addEventListener("click",()=>{saveAnswer(currentIndex); checkAnswers();});
+</script>
 
 </body>
 </html>
